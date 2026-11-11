@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play Max - Streaming Platform</title>
+  
+  <!-- Plyr Video Player CSS -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+  
+  <style>
+    :root {
+      --netflix-red: #E50914;
+      --bg-dark: #141414;
+      --card-bg: #181818;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #FFFFFF;
+      overflow-x: hidden;
+      padding-bottom: 60px;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      height: 60px;
+      padding: 0 4%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+      z-index: 20;
+      transition: background 0.3s ease;
+    }
+
+    .navbar.scrolled {
+      background: #141414;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+    }
+
+    
+
+    /* Hero Slider Container */
+    .hero-slider-container {
+      position: relative;
+      width: 100%;
+      height: 68vh;
+      overflow: hidden;
+    }
+
+    .hero-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0 4% 65px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease-in-out;
+    }
+
+    .hero-slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(0deg, #141414 0%, rgba(20,20,20,0.35) 45%, rgba(0,0,0,0.8) 100%);
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      max-width: 550px;
+      z-index: 2;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      background: var(--netflix-red);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      font-size: 2.3rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      line-height: 1.15;
+    }
+
+    .hero-desc {
+      font-size: 0.95rem;
+      color: #D1D1D1;
+      line-height: 1.4;
+      margin-bottom: 18px;
+    }
+
+    .btn-play {
+      background-color: #FFFFFF;
+      color: #000000;
+      border: none;
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .btn-play:hover {
+      background-color: rgba(255, 255, 255, 0.75);
+      transform: scale(1.03);
+    }
+
+    .hero-dots {
+      position: absolute;
+      bottom: 25px;
+      right: 4%;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot.active {
+      background: var(--netflix-red);
+      width: 24px;
+      border-radius: 6px;
+    }
+
+    /* Rows */
+    .section {
+      padding: 24px 4% 0;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .movie-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      padding-bottom: 15px;
+      -webkit-overflow-scrolling: touch;
+      min-height: 200px;
+    }
+
+    .movie-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .movie-card {
+      min-width: 135px;
+      max-width: 135px;
+      height: 200px;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      background-color: var(--card-bg);
+      flex-shrink: 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .movie-card:hover {
+      transform: scale(1.06);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.85);
+      z-index: 3;
+    }
+
+    .movie-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Modal Player */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.94);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 850px;
+      background: #000000;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    }
+
+    /* Ultra-clean cinematic modal backdrop */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.96);
+      backdrop-filter: blur(14px);
+      z-index: 100;
+      align-items: flex-start; /* Moved upwards from center */
+      justify-content: center;
+      padding: 30px 15px 40px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 950px;
+      background: #181818;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.98);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      animation: modalSlideUp 0.35s ease-out;
+    }
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .player-wrapper {
+      width: 100%;
+      background: #000000;
+    }
+
+    /* Player Details Section Below Video */
+    .player-details {
+      padding: 22px 26px 26px;
+      background: linear-gradient(180deg, #181818 0%, #111111 100%);
+    }
+
+    .modal-movie-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      color: #FFFFFF;
+    }
+
+    .modal-meta-tags {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .badge-match {
+      color: #46D369;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .badge-pill {
+      background: rgba(255, 255, 255, 0.12);
+      color: #E5E5E5;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    
+    
+    /* Search Bar in Navbar */
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      transition: all 0.3s ease;
+    }
+
+    .search-box:focus-within {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: var(--netflix-red);
+      box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);
+    }
+
+    .search-icon {
+      color: #AAAAAA;
+      margin-right: 8px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #FFFFFF;
+      font-size: 0.85rem;
+      width: 140px;
+      transition: width 0.3s ease;
+    }
+
+    .search-box input:focus {
+      width: 190px;
+    }
+
+    .search-box input::placeholder {
+      color: #888888;
+    }
+
+    /* IMDb Badge styling */
+    .badge-imdb {
+      background: #F5C518;
+      color: #000000;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 3px 7px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Player Actions Row (Download + Share) */
+    .player-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 14px 0 16px;
+    }
+
+    .btn-share {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn-share:hover {
+      background: #25D366;
+      border-color: #25D366;
+      color: #FFFFFF;
+      transform: translateY(-2px);
+    }
+
+    /* Sleek Download Action Button */
+    .player-actions {
+      margin: 14px 0 16px;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 9px 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+
+    .btn-download:hover {
+      background: var(--netflix-red);
+      border-color: var(--netflix-red);
+      color: #FFFFFF;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(229, 9, 20, 0.4);
+    }
+
+    
+    /* Filter Chips Horizontal Bar */
+    .filter-chips-wrapper {
+      padding: 18px 4% 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .filter-chips-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      width: max-content;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.08);
+      color: #D1D1D1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+      transform: translateY(-2px);
+    }
+
+    .chip.active {
+      background: var(--netflix-red);
+      color: #FFFFFF;
+      border-color: var(--netflix-red);
+      box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+    }
+
+    .chip-mylist {
+      border-color: rgba(229, 9, 20, 0.4);
+    }
+
+    /* My List Button in Player Details */
+    .btn-mylist {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 9px 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn-mylist:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .btn-mylist.in-list {
+      background: #46D369;
+      border-color: #46D369;
+      color: #000000;
+    }
+
+    
+    /* Progress bar on Continue Watching cards */
+    .card-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      z-index: 4;
+    }
+
+    .card-progress-fill {
+      height: 100%;
+      background: var(--netflix-red);
+      width: 0%;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Skeleton Loading Cards */
+    .skeleton-card {
+      min-width: 135px;
+      max-width: 135px;
+      height: 200px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #181818 25%, #252525 50%, #181818 75%);
+      background-size: 200% 100%;
+      animation: shimmerLoading 1.5s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes shimmerLoading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    
+    /* Body padding to make space for bottom nav */
+    body {
+      padding-bottom: 90px !important;
+    }
+
+    /* Footer styling */
+    .app-footer {
+      margin-top: 50px;
+      padding: 30px 4% 20px;
+      text-align: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.6) 100%);
+    }
+
+    
+
+    .footer-tagline {
+      font-size: 0.82rem;
+      color: #888888;
+      margin-bottom: 15px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links span {
+      font-size: 0.85rem;
+      color: #B3B3B3;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links span:hover {
+      color: #FFFFFF;
+      text-decoration: underline;
+    }
+
+    .footer-copy {
+      font-size: 0.75rem;
+      color: #666666;
+    }
+
+    /* Fixed Mobile Bottom Navigation Bar */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 64px;
+      background: rgba(18, 18, 18, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 90;
+      padding: 4px 10px;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: #888888;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 8px;
+      transition: all 0.25s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-item span {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .nav-item.active,
+    .nav-item:hover {
+      color: #FFFFFF;
+    }
+
+    .nav-item.active svg {
+      stroke: var(--netflix-red);
+      transform: scale(1.1);
+    }
+
+    .nav-item.active span {
+      color: var(--netflix-red);
+      font-weight: 700;
+    }
+
+    
+    /* Web Series Episodes Tray */
+    .episodes-container {
+      margin-top: 18px;
+      margin-bottom: 22px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .episodes-heading {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .episodes-list {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .episodes-list::-webkit-scrollbar {
+      height: 5px;
+    }
+
+    .episodes-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .episode-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: #E5E5E5;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .episode-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .episode-btn.active {
+      background: var(--netflix-red);
+      color: #FFFFFF;
+      border-color: var(--netflix-red);
+      box-shadow: 0 4px 12px rgba(229, 9, 20, 0.45);
+    }
+
+    .modal-movie-desc {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #C0C0C0;
+      margin-bottom: 24px;
+      max-width: 800px;
+    }
+
+    /* Recommendations Row */
+    .modal-recommendations {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 18px;
+    }
+
+    .modal-rec-heading {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #E5E5E5;
+      margin-bottom: 14px;
+    }
+
+    .modal-rec-row {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      padding-bottom: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-rec-row::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .modal-rec-row::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .rec-card {
+      min-width: 120px;
+      max-width: 120px;
+      height: 175px;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #222222;
+      flex-shrink: 0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+    }
+
+    .rec-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.85);
+    }
+
+    .rec-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+
+    :root {
+      --plyr-color-main: var(--netflix-red);
+    }
+  
+    /* Premium Netflix-style Splash Screen */
+    #splashScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, #1f0507 0%, #080808 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    #splashScreen.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    
+    .splash-subtitle {
+      font-size: 0.9rem;
+      color: #999;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      opacity: 0;
+      animation: fadeInSub 1s ease 0.6s forwards;
+    }
+    @keyframes splashZoom {
+      0% { transform: scale(0.6); opacity: 0; filter: blur(6px); }
+      60% { transform: scale(1.08); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fadeInSub {
+      to { opacity: 1; }
+    }
+
+    /* "NEW" Badge on cards */
+    .badge-new-card {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--netflix-red);
+      color: #ffffff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+      pointer-events: none;
+    }
+
+    /* Floating Telegram Community Button */
+    .btn-floating-telegram {
+      position: fixed;
+      bottom: 78px;
+      right: 18px;
+      background: #0088cc;
+      color: #ffffff;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 18px rgba(0, 136, 204, 0.5);
+      z-index: 85;
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .btn-floating-telegram:hover {
+      transform: scale(1.12);
+      box-shadow: 0 6px 22px rgba(0, 136, 204, 0.7);
+    }
+
+    /* Double Tap Seek Feedback Overlay */
+    .seek-ripple {
+      position: absolute;
+      top: 0;
+      width: 40%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      background: rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 10;
+    }
+    .seek-ripple.left { left: 0; border-radius: 0 100px 100px 0; }
+    .seek-ripple.right { right: 0; border-radius: 100px 0 0 100px; }
+    .seek-ripple.show {
+      opacity: 1;
+      animation: ripplePulse 0.5s ease;
+    }
+    @keyframes ripplePulse {
+      0% { transform: scale(0.9); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* Toast Notification for Exit */
+    .app-toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      background: rgba(30, 30, 30, 0.95);
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    .app-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+  
+    /* Sync/Refresh Button in Navbar */
+    .btn-refresh {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+    }
+    .btn-refresh:active {
+      transform: rotate(180deg);
+      border-color: var(--netflix-red);
+    }
+    .btn-refresh.spinning svg {
+      animation: spinAnim 0.7s linear infinite;
+    }
+    @keyframes spinAnim {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* "No Results Found" Search State */
+    #noResultsState {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+      color: #888;
+    }
+    #noResultsState svg {
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    #noResultsState h3 {
+      font-size: 1.15rem;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+  
+    /* Stunning 3D Typography for PLAY MAX */
+    .brand-logo {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      perspective: 500px;
+      transform: perspective(400px) rotateX(8deg);
+      color: #FFFFFF;
+      text-shadow: 
+        0 1px 0 #cccccc,
+        0 2px 0 #b3b3b3,
+        0 3px 0 #999999,
+        0 4px 0 #808080,
+        0 5px 6px rgba(0, 0, 0, 0.7),
+        0 0 10px rgba(229, 9, 20, 0.5);
+      transition: transform 0.3s ease, text-shadow 0.3s ease;
+    }
+    .brand-logo:hover {
+      transform: perspective(400px) rotateX(0deg) scale(1.05);
+    }
+    .brand-logo span {
+      color: var(--netflix-red);
+      text-shadow: 
+        0 1px 0 #a0070e,
+        0 2px 0 #85060c,
+        0 3px 0 #6b050a,
+        0 4px 0 #4d0407,
+        0 5px 8px rgba(0, 0, 0, 0.8),
+        0 0 14px rgba(229, 9, 20, 0.8);
+    }
+
+    /* 3D Splash Screen Logo */
+    .splash-logo {
+      font-size: 3.5rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transform: perspective(600px) rotateX(12deg);
+      text-shadow: 
+        0 1px 0 #d9d9d9,
+        0 2px 0 #bfbfbf,
+        0 3px 0 #a6a6a6,
+        0 4px 0 #8c8c8c,
+        0 5px 0 #737373,
+        0 6px 0 #595959,
+        0 7px 10px rgba(0, 0, 0, 0.9),
+        0 0 25px rgba(255, 255, 255, 0.4);
+      animation: splash3DZoom 1.6s cubic-bezier(0.15, 0.85, 0.25, 1) forwards;
+    }
+    .splash-logo span {
+      color: var(--netflix-red);
+      text-shadow: 
+        0 1px 0 #c00811,
+        0 2px 0 #a0070e,
+        0 3px 0 #85060c,
+        0 4px 0 #6b050a,
+        0 5px 0 #520408,
+        0 6px 0 #3b0306,
+        0 7px 12px rgba(0, 0, 0, 0.95),
+        0 0 35px rgba(229, 9, 20, 0.9);
+    }
+    @keyframes splash3DZoom {
+      0% { transform: perspective(600px) rotateX(25deg) scale(0.5); opacity: 0; filter: blur(8px); }
+      60% { transform: perspective(600px) rotateX(10deg) scale(1.12); opacity: 1; filter: blur(0); }
+      100% { transform: perspective(600px) rotateX(12deg) scale(1); opacity: 1; }
+    }
+
+    /* 3D Footer Logo */
+    .footer-logo {
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      color: #FFFFFF;
+      text-shadow: 
+        0 1px 0 #999,
+        0 2px 0 #777,
+        0 3px 4px rgba(0,0,0,0.8);
+    }
+    .footer-logo span {
+      color: var(--netflix-red);
+      text-shadow: 
+        0 1px 0 #a0070e,
+        0 2px 0 #70050a,
+        0 3px 4px rgba(0,0,0,0.8);
+    }
+
+  
+    /* Offline / No Internet Sticky Banner */
+    #offlineBanner {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      width: 100%;
+      background: #E50914;
+      color: #FFFFFF;
+      text-align: center;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      z-index: 95;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
+
+    /* Top 10 Ranking Badge on Trending Cards */
+    .trending-rank-badge {
+      position: absolute;
+      bottom: -10px;
+      left: -4px;
+      font-size: 4rem;
+      font-weight: 900;
+      color: #141414;
+      -webkit-text-stroke: 3px #555555;
+      line-height: 1;
+      z-index: 3;
+      pointer-events: none;
+      font-family: 'Arial Black', Impact, sans-serif;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+      user-select: none;
+    }
+    .movie-card.ranked {
+      margin-left: 12px;
+    }
+
+    /* Report Link Button in Player Details */
+    .btn-report {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ff9800;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 9px 15px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .btn-report:hover {
+      background: rgba(255, 152, 0, 0.2);
+      border-color: #ff9800;
+      color: #ffb74d;
+      transform: translateY(-2px);
+    }
+
+  
+
+
+    /* AMOLED Deep Pure Black card glow */
+    .movie-card:hover {
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.45), 0 8px 18px rgba(0,0,0,0.9);
+      border: 1px solid rgba(229, 9, 20, 0.6);
+    }
+
+    /* Player Gesture HUD Overlays */
+    .gesture-hud {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 800;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 15;
+    }
+    .gesture-hud.left { left: 24px; }
+    .gesture-hud.right { right: 24px; }
+    .gesture-hud.show { opacity: 1; }
+    .hud-bar {
+      width: 60px;
+      height: 6px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .hud-bar-fill {
+      height: 100%;
+      background: var(--netflix-red);
+      width: 50%;
+    }
+
+    /* Copy Link & Sleep Timer Action Buttons */
+    .btn-pip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 9px 15px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .btn-pip:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Offline Network Alert Banner -->
+  <div id="offlineBanner">⚠️ No Internet Connection! Please check your network.</div>
+
+  <!-- App Splash Screen -->
+  <div id="splashScreen">
+    <div class="splash-logo"><span>PLAY</span> MAX</div>
+    <div class="splash-subtitle">UNLIMITED STREAMING</div>
+  </div>
+
+  <!-- Toast for Double Back Exit -->
+  <div class="app-toast" id="appToast">Press back again to exit</div>
+
+  <!-- Floating Telegram Community CTA -->
+   <a href="https://t.me/PAY_MAX_UPDATES" target="_blank" class="btn-floating-telegram" title="Join Telegram Channel">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.17 3.35-1.37 3.73-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+    </svg>
+  </a>
+
+
+  <header class="navbar" id="navbar">
+    <div class="brand-logo" onclick="window.scrollTo({top:0, behavior:'smooth'})"><span>PLAY</span> MAX</div>
+    
+    <div style="display:flex; align-items:center; gap:8px;">
+      <!-- Quick Search Bar -->
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="movieSearchInput" placeholder="Search..." oninput="handleSearch(this.value)">
+        <span id="clearSearchBtn" onclick="clearSearch()" style="display:none; cursor:pointer; color:#999; font-size:16px; font-weight:bold; padding-left:4px;">✕</span>
+      </div>
+
+      <!-- Quick Sync/Refresh Button -->
+      <button class="btn-refresh" id="btnRefresh" onclick="refreshData()" title="Sync with Google Sheet">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+
+  <!-- Hero Fade Carousel Container -->
+  <div class="hero-slider-container" id="heroContainer">
+    <!-- Populated automatically from Google Sheets -->
+  </div>
+
+    <!-- Category Filter Chips -->
+  <div class="filter-chips-wrapper">
+    <div class="filter-chips">
+      <button class="chip active" onclick="filterByTag('all', this)">All</button>
+      <button class="chip" onclick="filterByTag('telugu', this)">🎬 Telugu</button>
+      <button class="chip" onclick="filterByTag('tamil', this)">🌟 Tamil</button>
+      <button class="chip" onclick="filterByTag('hindi', this)">⚡ Hindi</button>
+      <button class="chip" onclick="filterByTag('english', this)">🍿 English</button>
+      <button class="chip" onclick="filterByTag('series', this)">📺 Web Series</button>
+      <button class="chip" onclick="filterByTag('trending', this)">🔥 Trending</button>
+      <button class="chip" onclick="filterByTag('action', this)">💥 Action</button>
+      <button class="chip" onclick="filterByTag('comedy', this)">😂 Comedy</button>
+      <button class="chip" onclick="filterByTag('thriller', this)">🔪 Thriller</button>
+      <button class="chip chip-mylist" onclick="filterByTag('mylist', this)">❤️ My List (<span id="myListCount">0</span>)</button>
+    </div>
+  </div>
+
+    <!-- Continue Watching Section -->
+  <div class="section" id="continueWatchingSection" style="display: none;">
+    <h2 class="section-title">⏱️ Continue Watching</h2>
+    <div class="movie-row" id="continueWatchingRow"></div>
+  </div>
+
+  <!-- My List Section (Shown when user saves movies) -->
+  <div class="section" id="myListSection" style="display: none;">
+    <h2 class="section-title">❤️ My List</h2>
+    <div class="movie-row" id="myListRow"></div>
+  </div>
+
+  <!-- Movie Category Sections -->
+  <div class="section" id="trendingSection">
+    <h2 class="section-title">🔥 Trending Now</h2>
+    <div class="movie-row" id="trendingRow">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </div>
+
+  <div class="section" id="teluguSection">
+    <h2 class="section-title">🎬 Telugu Movies</h2>
+    <div class="movie-row" id="teluguRow"></div>
+  </div>
+
+  <div class="section" id="tamilSection">
+    <h2 class="section-title">🌟 Tamil Movies</h2>
+    <div class="movie-row" id="tamilRow"></div>
+  </div>
+
+  <div class="section" id="hindiSection">
+    <h2 class="section-title">⚡ Hindi Movies</h2>
+    <div class="movie-row" id="hindiRow"></div>
+  </div>
+
+  <div class="section" id="englishSection">
+    <h2 class="section-title">🍿 English / Hollywood</h2>
+    <div class="movie-row" id="englishRow"></div>
+  </div>
+
+    <div class="section" id="seriesSection">
+    <h2 class="section-title">📺 Web Series</h2>
+    <div class="movie-row" id="seriesRow"></div>
+  </div>
+
+  <div class="section" id="allSection">
+    <h2 class="section-title">🎥 All Movies</h2>
+    <div class="movie-row" id="allMoviesRow"></div>
+  </div>
+
+    <!-- Footer -->
+    <!-- Search No Results State -->
+  <div id="noResultsState">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#666" stroke-width="1.8">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>
+    <h3>No Movies or Series Found</h3>
+    <p>Try searching with another name or check your spelling.</p>
+  </div>
+
+  <footer class="app-footer">
+    <div class="footer-logo"><span>PLAY</span> MAX</div>
+    <p class="footer-tagline">High Quality Streaming • Instant Download • Zero Buffering</p>
+    <div class="footer-links">
+      <span onclick="window.scrollTo({top:0, behavior:'smooth'})">Back to Top ↑</span>
+      <span onclick="filterByTag('mylist', document.querySelector('.chip-mylist'))">My Watchlist</span>
+      <span onclick="filterByTag('trending', document.querySelectorAll('.chip')[6])">Trending</span>
+    </div>
+    <p class="footer-copy">© 2026 Play Max. All rights reserved.</p>
+  </footer>
+
+  <!-- Fixed Mobile App Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="bNavHome" onclick="bottomNavAction('home')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span>Home</span>
+    </div>
+
+    <div class="nav-item" id="bNavSearch" onclick="bottomNavAction('search')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <span>Search</span>
+    </div>
+
+    <div class="nav-item" id="bNavTrending" onclick="bottomNavAction('trending')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+      </svg>
+      <span>Trending</span>
+    </div>
+
+    <div class="nav-item" id="bNavMyList" onclick="bottomNavAction('mylist')">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+      <span>My List</span>
+    </div>
+  </nav>
+
+  <!-- Video Modal -->
+  <div class="modal" id="videoModal">
+    <div class="modal-box">
+      <!-- Player at top -->
+      <div class="player-wrapper">
+        <video id="netflixPlayer" playsinline controls preload="auto">
+          <source src="" type="video/mp4">
+        </video>
+                <!-- Brightness & Volume Gesture HUD -->
+        <div class="gesture-hud left" id="brightnessHud">
+          <span>☀️ Brightness</span>
+          <div class="hud-bar"><div class="hud-bar-fill" id="brightnessFill" style="width: 100%;"></div></div>
+          <span id="brightnessText">100%</span>
+        </div>
+        <div class="gesture-hud right" id="volumeHud">
+          <span>🔊 Volume</span>
+          <div class="hud-bar"><div class="hud-bar-fill" id="volumeFill" style="width: 100%;"></div></div>
+          <span id="volumeText">100%</span>
+        </div>
+        <div id="brightnessShade" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; background:black; opacity:0; z-index:5;"></div>
+        <!-- Double Tap Seek Overlays -->
+        <div class="seek-ripple left" id="seekLeftRipple">◀◀ 10s</div>
+        <div class="seek-ripple right" id="seekRightRipple">10s ▶▶</div>
+      </div>
+
+      <!-- Sleek Movie Info & Trending Under the Player -->
+      <div class="player-details" id="playerDetails">
+        <div class="player-header-row">
+          <h2 id="modalTitle" class="modal-movie-title">Movie Title</h2>
+          <div class="modal-meta-tags">
+            <span class="badge-match">99% Match</span>
+            <span class="badge-imdb" id="modalImdbBadge">★ IMDb 8.5</span>
+            <span class="badge-pill">4K UHD</span>
+            <span class="badge-pill">Dolby Atmos</span>
+            <span class="badge-pill" id="modalCategoryBadge">Telugu</span>
+          </div>
+        </div>
+
+        <!-- Player Action Buttons Directly Under Player -->
+        <div class="player-actions">
+          <button id="modalMyListBtn" class="btn-mylist" onclick="toggleMyList()">
+            <span id="myListIcon">+</span> <span id="myListText">My List</span>
+          </button>
+
+          <a id="modalDownloadBtn" href="#" target="_blank" download class="btn-download">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Movie
+          </a>
+
+          <button id="modalShareBtn" class="btn-share" onclick="shareCurrentMovie()">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            Share
+          </button>
+          <button id="modalPipBtn" class="btn-pip" onclick="togglePiP()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <rect x="12" y="9" width="8" height="6" rx="1"></rect>
+            </svg>
+            PiP Mode
+          </button>
+
+
+
+          <button id="modalReportBtn" class="btn-report" onclick="reportBrokenLink()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+              <line x1="4" y1="22" x2="4" y2="15"></line>
+            </svg>
+            Report Link
+          </button>
+        </div>
+
+        <p id="modalDescription" class="modal-movie-desc"></p>
+
+        <!-- Web Series Episodes Selector (Shows automatically when series has episodes) -->
+        <div class="episodes-container" id="episodesContainer" style="display: none;">
+          <h3 class="episodes-heading">📺 Episodes</h3>
+          <div class="episodes-list" id="episodesList">
+            <!-- Dynamically populated episode buttons -->
+          </div>
+        </div>
+
+        <!-- Trending Recommendations Row Under Video -->
+        <div class="modal-recommendations">
+          <h3 class="modal-rec-heading">🔥 More Like This & Trending</h3>
+          <div class="modal-rec-row" id="modalRecRow">
+            <!-- Dynamically populated recommendations -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  <script>
+    const MOVIES_SPREADSHEET_ID = "1-u-xwuZAyp6rElb0p7jxAxzLSBtCcIXWnJMueaeDPS8";
+
+    // Method 1: JSONP Loader (100% immune to CORS on mobile file:// and content://)
+    function fetchViaJSONP(sheetId, tabName) {
+      return new Promise((resolve) => {
+        const callbackName = 'gviz_cb_' + Math.random().toString(36).substring(2, 9);
+        const script = document.createElement('script');
+
+        const timer = setTimeout(() => {
+          cleanup();
+          resolve([]);
+        }, 4000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+
+        window[callbackName] = function(data) {
+          cleanup();
+          try {
+            if (!data || !data.table || !data.table.rows) return resolve([]);
+            const rows = data.table.rows;
+            if (rows.length === 0) return resolve([]);
+
+            const headers = rows[0].c.map(cell => (cell && cell.v ? String(cell.v).toLowerCase().trim() : ''));
+            const hasHeaders = headers.includes('title') || headers.includes('poster');
+
+            let colKeys = hasHeaders ? headers : ['title', 'category', 'poster', 'stream_url', 'description', 'rating'];
+            let startRow = hasHeaders ? 1 : 0;
+
+            const items = [];
+            for (let r = startRow; r < rows.length; r++) {
+              const row = rows[r];
+              if (!row || !row.c) continue;
+              const item = {};
+              row.c.forEach((cell, idx) => {
+                const key = colKeys[idx] || `col_${idx}`;
+                item[key] = (cell && cell.v !== null && cell.v !== undefined) ? String(cell.v).trim() : '';
+              });
+              if (item.title || item.poster || item.stream_url) {
+                items.push(item);
+              }
+            }
+            resolve(items);
+          } catch (err) {
+            resolve([]);
+          }
+        };
+
+        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&sheet=${encodeURIComponent(tabName)}`;
+        script.onerror = () => {
+          cleanup();
+          resolve([]);
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    // Method 2: OpenSheet Fetcher
+    async function fetchViaOpenSheet(sheetId, tabName) {
+      try {
+        const res = await fetch(`https://opensheet.elk.sh/${sheetId}/${encodeURIComponent(tabName)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) return data;
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    async function getSheetData(sheetId, tabName) {
+      // Try OpenSheet first
+      let data = await fetchViaOpenSheet(sheetId, tabName);
+      if (data && data.length > 0) return data;
+      // Fallback to JSONP (works in Android files / content://)
+      data = await fetchViaJSONP(sheetId, tabName);
+      return data || [];
+    }
+
+    const player = new Plyr('#netflixPlayer', {
+      controls: [
+        'play-large', 'play', 'progress', 'current-time', 
+        'duration', 'mute', 'volume', 'settings', 'pip', 'fullscreen'
+      ],
+      settings: ['speed'],
+      speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+      seekTime: 10
+    });
+
+    player.on('timeupdate', () => {
+      if (window.currentActiveMovie && player.currentTime > 5) {
+        saveWatchProgress(window.currentActiveMovie, player.currentTime, player.duration);
+      }
+    });
+
+
+        const modal = document.getElementById('videoModal');
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closePlayer();
+      }
+    });
+
+    let allMoviesData = [];
+
+    function openPlayer(movieOrUrl) {
+      if (!movieOrUrl) return;
+
+      let movie = typeof movieOrUrl === 'object' ? movieOrUrl : allMoviesData.find(m => m.stream_url === movieOrUrl);
+      if (!movie && typeof movieOrUrl === 'string') {
+        movie = { stream_url: movieOrUrl, title: 'Now Playing', description: '', category: 'HD' };
+      }
+
+      modal.classList.add('active');
+      history.pushState({ playerOpen: true }, '');
+
+      // Populate details below the player
+      document.getElementById('modalTitle').textContent = movie.title || 'Movie Stream';
+      document.getElementById('modalDescription').textContent = movie.description || 'Watch in high definition streaming with crystal-clear audio.';
+      document.getElementById('modalCategoryBadge').textContent = (movie.category || 'HD').split(',')[0].trim();
+
+      // Set IMDb Badge (if user has rating in sheet, show it; else show 8.5)
+      const imdbBadge = document.getElementById('modalImdbBadge');
+      if (movie.rating || movie.imdb) {
+        imdbBadge.textContent = '★ IMDb ' + (movie.rating || movie.imdb);
+      } else {
+        imdbBadge.textContent = '★ IMDb 8.5';
+      }
+
+      // Update My List button state
+      updateMyListBtn(movie);
+
+            // Parse Episodes for Web Series
+      const epContainer = document.getElementById('episodesContainer');
+      const epList = document.getElementById('episodesList');
+      epList.innerHTML = '';
+
+      let episodes = [];
+      const rawUrl = movie.stream_url || '';
+
+      if (rawUrl.includes('|') || rawUrl.includes('\n')) {
+        const parts = rawUrl.split(/[|\n]/).map(p => p.trim()).filter(Boolean);
+        parts.forEach((part, index) => {
+          if (part.includes(':http')) {
+            const splitIdx = part.indexOf(':http');
+            const title = part.substring(0, splitIdx).trim();
+            const url = part.substring(splitIdx + 1).trim();
+            episodes.push({ title: title || `Ep ${index + 1}`, url: url });
+          } else {
+            episodes.push({ title: `Episode ${index + 1}`, url: part.trim() });
+          }
+        });
+      }
+
+      let activePlayUrl = episodes.length > 0 ? episodes[0].url : rawUrl;
+
+      if (episodes.length > 1) {
+        epContainer.style.display = 'block';
+        episodes.forEach((ep, idx) => {
+          const epBtn = document.createElement('button');
+          epBtn.className = `episode-btn ${idx === 0 ? 'active' : ''}`;
+          epBtn.innerHTML = `▶ ${ep.title}`;
+          epBtn.onclick = () => {
+            document.querySelectorAll('.episode-btn').forEach(b => b.classList.remove('active'));
+            epBtn.classList.add('active');
+            changeEpisode(ep.url, ep.title);
+          };
+          epList.appendChild(epBtn);
+        });
+      } else {
+        epContainer.style.display = 'none';
+      }
+
+      function changeEpisode(streamUrl, epTitle) {
+        player.source = {
+          type: 'video',
+          title: `${movie.title} - ${epTitle}`,
+          sources: [{ src: streamUrl, type: 'video/mp4', size: 720 }]
+        };
+        const dlBtn = document.getElementById('modalDownloadBtn');
+        if (dlBtn) dlBtn.href = streamUrl;
+        setTimeout(() => { player.play().catch(e => console.log(e)); }, 150);
+      }
+
+      // Set Download Link
+      const dlBtn = document.getElementById('modalDownloadBtn');
+      dlBtn.href = movie.stream_url || '#';
+
+      // Current active movie for sharing
+      window.currentActiveMovie = movie;
+
+      // Populate Recommendations inside player
+      const recRow = document.getElementById('modalRecRow');
+      recRow.innerHTML = '';
+      const normalizeTitle = title => (title || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, '')
+  .trim();
+
+const seenTitles = new Set();
+
+const otherMovies = allMoviesData.filter(m => {
+  const key = normalizeTitle(m.title);
+
+  if (!key || key === normalizeTitle(movie.title)) return false;
+  if (seenTitles.has(key)) return false;
+
+  seenTitles.add(key);
+  return true;
+});
+      
+      otherMovies.slice(0, 10).forEach(other => {
+        const rCard = document.createElement('div');
+        rCard.className = 'rec-card';
+        rCard.title = other.title;
+        rCard.onclick = (e) => {
+          e.stopPropagation();
+          openPlayer(other);
+          modal.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        rCard.innerHTML = `<img src="${other.poster}" alt="${other.title}" loading="lazy">`;
+        recRow.appendChild(rCard);
+      });
+
+      player.source = {
+        type: 'video',
+        title: movie.title || 'Movie Stream',
+        sources: [
+          {
+            src: activePlayUrl,
+            type: 'video/mp4',
+            size: 720
+          }
+        ]
+      };
+
+      setTimeout(() => {
+        player.play().catch(e => console.log('Autoplay handled:', e));
+      }, 150);
+    }
+
+    function closePlayer() {
+      player.pause();
+      modal.classList.remove('active');
+      player.stop();
+
+      // Clean up browser history state if closing via on-screen button
+      if (history.state && history.state.playerOpen) {
+        history.back();
+      }
+    }
+
+    // Handle Phone / Browser Hardware Back Button
+    window.addEventListener('popstate', () => {
+      if (modal.classList.contains('active')) {
+        player.pause();
+        modal.classList.remove('active');
+        player.stop();
+      }
+    });
+
+    // Handle ESC key on keyboard
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closePlayer();
+      }
+    });
+
+    // Load data directly from Google Sheets
+    async function loadMovies() {
+      try {
+        // Fetch data only from the Movies Google Sheet
+        let movies = await getSheetData(MOVIES_SPREADSHEET_ID, 'Sheet1');
+        allMoviesData = [...movies];
+
+        const trendingRow = document.getElementById('trendingRow');
+        const teluguRow = document.getElementById('teluguRow');
+        const tamilRow = document.getElementById('tamilRow');
+        const hindiRow = document.getElementById('hindiRow');
+        const englishRow = document.getElementById('englishRow');
+        const seriesRow = document.getElementById('seriesRow');
+        const allMoviesRow = document.getElementById('allMoviesRow');
+        const heroContainer = document.getElementById('heroContainer');
+
+        trendingRow.innerHTML = '';
+        teluguRow.innerHTML = '';
+        tamilRow.innerHTML = '';
+        hindiRow.innerHTML = '';
+        englishRow.innerHTML = '';
+        if (seriesRow) seriesRow.innerHTML = '';
+        allMoviesRow.innerHTML = '';
+        heroContainer.innerHTML = '';
+
+        if (!allMoviesData || allMoviesData.length === 0) return;
+
+        // Build Hero Slides (First 3 movies)
+        const heroMovies = movies.slice(0, 3);
+        heroMovies.forEach((m, idx) => {
+          const slide = document.createElement('div');
+          slide.className = `hero-slide ${idx === 0 ? 'active' : ''}`;
+          slide.style.backgroundImage = `url('${m.poster}')`;
+          slide.innerHTML = `
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+              <span class="hero-tag">${m.category || 'Featured'}</span>
+              <h1 class="hero-title">${m.title}</h1>
+              <p class="hero-desc">${m.description || 'Watch now in high quality streaming.'}</p>
+              <button class="btn-play" onclick="openPlayer(allMoviesData[${idx}])">
+                ▶ Play Now
+              </button>
+            </div>
+          `;
+          heroContainer.appendChild(slide);
+        });
+
+        // Add Hero Dots
+        const dotsContainer = document.createElement('div');
+        dotsContainer.className = 'hero-dots';
+        heroMovies.forEach((_, idx) => {
+          const dot = document.createElement('div');
+          dot.className = `dot ${idx === 0 ? 'active' : ''}`;
+          dot.onclick = () => goToSlide(idx);
+          dotsContainer.appendChild(dot);
+        });
+        heroContainer.appendChild(dotsContainer);
+
+        // Track counts to hide empty category rows
+        let counts = { trending: 0, telugu: 0, tamil: 0, hindi: 0, english: 0, series: 0 };
+
+        // Helper to create card
+        function createCard(m) {
+          const card = document.createElement('div');
+          card.className = 'movie-card';
+          card.onclick = () => openPlayer(m);
+          const isNew = (m.title && m.title.includes('2026')) || (m.category && m.category.toLowerCase().includes('new'));
+          card.innerHTML = `
+            ${isNew ? '<span class="badge-new-card">NEW</span>' : ''}
+            <img src="${m.poster}" alt="${m.title}" loading="lazy">
+          `;
+          return card;
+        }
+
+        // Categorize movies dynamically
+        allMoviesData.forEach(m => {
+          const cat = (m.category || '').toLowerCase();
+          const card = createCard(m);
+
+          if (cat.includes('trend')) {
+            counts.trending++;
+            const tCard = createCard(m);
+            tCard.classList.add('ranked');
+            const rankBadge = document.createElement('div');
+            rankBadge.className = 'trending-rank-badge';
+            rankBadge.textContent = counts.trending;
+            tCard.appendChild(rankBadge);
+            trendingRow.appendChild(tCard);
+          }
+          if (cat.includes('telugu')) {
+            teluguRow.appendChild(createCard(m));
+            counts.telugu++;
+          }
+          if (cat.includes('tamil')) {
+            tamilRow.appendChild(createCard(m));
+            counts.tamil++;
+          }
+          if (cat.includes('hindi')) {
+            hindiRow.appendChild(createCard(m));
+            counts.hindi++;
+          }
+          if (cat.includes('english') || cat.includes('hollywood')) {
+            englishRow.appendChild(createCard(m));
+            counts.english++;
+          }
+
+                    if (cat.includes('series') || cat.includes('web series')) {
+            if (seriesRow) seriesRow.appendChild(createCard(m));
+            counts.series++;
+          }
+          allMoviesRow.appendChild(card);
+        });
+
+        // Hide section headers if no movies are added yet in that language
+        if (counts.trending === 0) document.getElementById('trendingSection').style.display = 'none';
+        if (counts.telugu === 0) document.getElementById('teluguSection').style.display = 'none';
+        if (counts.tamil === 0) document.getElementById('tamilSection').style.display = 'none';
+        if (counts.hindi === 0) document.getElementById('hindiSection').style.display = 'none';
+        if (counts.english === 0) document.getElementById('englishSection').style.display = 'none';
+        if (counts.series === 0 && document.getElementById('seriesSection')) document.getElementById('seriesSection').style.display = 'none';
+
+        initHeroSlider();
+        updateMyListUI();
+        updateContinueWatchingUI();
+      } catch (err) {
+        console.error('Error fetching sheet data:', err);
+      }
+    }
+
+    // Hero Slider Animation
+    let currentSlide = 0;
+    let slideInterval;
+
+    function initHeroSlider() {
+      const slides = document.querySelectorAll('.hero-slide');
+      const dots = document.querySelectorAll('.dot');
+      if (slides.length <= 1) return;
+
+      window.goToSlide = function(index) {
+        slides[currentSlide]?.classList.remove('active');
+        dots[currentSlide]?.classList.remove('active');
+        currentSlide = index;
+        slides[currentSlide]?.classList.add('active');
+        dots[currentSlide]?.classList.add('active');
+      };
+
+      function nextSlide() {
+        const nextIndex = (currentSlide + 1) % slides.length;
+        window.goToSlide(nextIndex);
+      }
+
+      slideInterval = setInterval(nextSlide, 4500);
+    }
+
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('navbar');
+      if (window.scrollY > 50) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+
+    
+    // Share current movie - Works 100% on WhatsApp, Telegram & Mobile
+    function shareCurrentMovie() {
+      const movie = window.currentActiveMovie;
+      if (!movie) {
+        alert('Please select a movie first.');
+        return;
+      }
+
+      const movieTitle = movie.title || 'Movie';
+      const movieUrl = movie.stream_url || window.location.href;
+      const shareText = `🎬 Watch "${movieTitle}" in HD! 🍿\n👉 Link: ${movieUrl}`;
+
+      // If running on a live website (https) with native share support
+      if (navigator.share && window.location.protocol.startsWith('http')) {
+        navigator.share({
+          title: movieTitle,
+          text: shareText,
+          url: movieUrl
+        }).catch(() => {
+          // Fallback to WhatsApp if user cancels or native share fails
+          openWhatsAppShare(shareText);
+        });
+      } else {
+        // Direct WhatsApp launch (works on mobile browsers and local files without popup blockers)
+        openWhatsAppShare(shareText);
+      }
+    }
+
+    function openWhatsAppShare(text) {
+      const waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+      // Using window.location.href avoids mobile browser popup blocker
+      window.location.href = waUrl;
+    }
+
+    // Live search function with Clear Button and "No Results" detection
+    function handleSearch(query) {
+      const q = (query || '').toLowerCase().trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.style.display = q ? 'inline-block' : 'none';
+
+      let visibleCount = 0;
+      allMoviesData.forEach((m) => {
+        const titleMatch = (m.title || '').toLowerCase().includes(q);
+        const catMatch = (m.category || '').toLowerCase().includes(q);
+        const shouldShow = (!q || titleMatch || catMatch);
+        if (shouldShow) visibleCount++;
+
+        document.querySelectorAll(`.movie-card img[alt="${m.title}"]`).forEach(img => {
+          const card = img.closest('.movie-card');
+          if (card) card.style.display = shouldShow ? 'block' : 'none';
+        });
+      });
+
+      const noRes = document.getElementById('noResultsState');
+      if (noRes) {
+        noRes.style.display = (q && visibleCount === 0) ? 'block' : 'none';
+      }
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('movieSearchInput');
+      if (input) {
+        input.value = '';
+        handleSearch('');
+      }
+    }
+
+    // Manual Refresh / Sync with Google Sheets
+    async function refreshData() {
+      const btn = document.getElementById('btnRefresh');
+      if (btn) btn.classList.add('spinning');
+      await loadMovies();
+      setTimeout(() => {
+        if (btn) btn.classList.remove('spinning');
+        const toast = document.getElementById('appToast');
+        if (toast) {
+          toast.textContent = 'Data refreshed from Sheets!';
+          toast.classList.add('show');
+          setTimeout(() => {
+            toast.classList.remove('show');
+            toast.textContent = 'Press back again to exit';
+          }, 2000);
+        }
+      }, 600);
+    }
+
+    
+    // -------------------------------------------------------------
+    // My List (Watchlist) Management using LocalStorage
+    // -------------------------------------------------------------
+    function getMyList() {
+      try {
+        return JSON.parse(localStorage.getItem('myMovieWatchlist')) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveMyList(list) {
+      localStorage.setItem('myMovieWatchlist', JSON.stringify(list));
+      updateMyListUI();
+        updateContinueWatchingUI();
+    }
+
+    function toggleMyList() {
+      const movie = window.currentActiveMovie;
+      if (!movie) return;
+
+      let list = getMyList();
+      const idx = list.findIndex(m => m.stream_url === movie.stream_url);
+
+      if (idx > -1) {
+        // Remove from list
+        list.splice(idx, 1);
+      } else {
+        // Add to list
+        list.push(movie);
+      }
+
+      saveMyList(list);
+      updateMyListBtn(movie);
+    }
+
+    function updateMyListBtn(movie) {
+      const btn = document.getElementById('modalMyListBtn');
+      const icon = document.getElementById('myListIcon');
+      const text = document.getElementById('myListText');
+      if (!btn || !movie) return;
+
+      const list = getMyList();
+      const inList = list.some(m => m.stream_url === movie.stream_url);
+
+      if (inList) {
+        btn.classList.add('in-list');
+        icon.textContent = '✓';
+        text.textContent = 'In My List';
+      } else {
+        btn.classList.remove('in-list');
+        icon.textContent = '+';
+        text.textContent = 'My List';
+      }
+    }
+
+    function updateMyListUI() {
+      const list = getMyList();
+      const countSpan = document.getElementById('myListCount');
+      if (countSpan) countSpan.textContent = list.length;
+
+      const myListSection = document.getElementById('myListSection');
+      const myListRow = document.getElementById('myListRow');
+      if (!myListSection || !myListRow) return;
+
+      myListRow.innerHTML = '';
+      if (list.length === 0) {
+        myListSection.style.display = 'none';
+        return;
+      }
+
+      myListSection.style.display = 'block';
+      list.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+        card.onclick = () => openPlayer(m);
+        card.innerHTML = `<img src="${m.poster}" alt="${m.title}" loading="lazy">`;
+        myListRow.appendChild(card);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // Quick Category / Tag Filter Chips
+    // -------------------------------------------------------------
+    function filterByTag(tag, chipElement) {
+      document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
+      if (chipElement) chipElement.classList.add('active');
+
+      const sections = {
+        trending: document.getElementById('trendingSection'),
+        telugu: document.getElementById('teluguSection'),
+        tamil: document.getElementById('tamilSection'),
+        hindi: document.getElementById('hindiSection'),
+        english: document.getElementById('englishSection'),
+        series: document.getElementById('seriesSection'),
+        all: document.getElementById('allSection'),
+        mylist: document.getElementById('myListSection')
+      };
+
+      if (tag === 'all') {
+        Object.keys(sections).forEach(k => {
+          if (sections[k]) {
+            if (k === 'mylist') {
+              sections[k].style.display = getMyList().length > 0 ? 'block' : 'none';
+            } else {
+              sections[k].style.display = 'block';
+            }
+          }
+        });
+        document.querySelectorAll('.movie-card').forEach(c => c.style.display = 'block');
+      } else if (tag === 'mylist') {
+        Object.keys(sections).forEach(k => {
+          if (sections[k]) sections[k].style.display = (k === 'mylist') ? 'block' : 'none';
+        });
+        if (getMyList().length === 0) {
+          alert('Your watchlist is currently empty. Play any movie and tap "+ My List" to add it!');
+        }
+      } else if (['action', 'comedy', 'thriller'].includes(tag)) {
+        // Filter by Genre
+        Object.keys(sections).forEach(k => {
+          if (sections[k]) sections[k].style.display = (k === 'all') ? 'block' : 'none';
+        });
+        allMoviesData.forEach(m => {
+          const match = ((m.description || '') + ' ' + (m.category || '')).toLowerCase().includes(tag);
+          document.querySelectorAll(`.movie-card img[alt="${m.title}"]`).forEach(img => {
+            const card = img.closest('.movie-card');
+            if (card) card.style.display = match ? 'block' : 'none';
+          });
+        });
+      } else {
+        Object.keys(sections).forEach(k => {
+          if (sections[k]) sections[k].style.display = (k === tag) ? 'block' : 'none';
+        });
+        document.querySelectorAll('.movie-card').forEach(c => c.style.display = 'block');
+      }
+    }
+    // -------------------------------------------------------------
+    // Continue Watching Tracking (LocalStorage)
+    // -------------------------------------------------------------
+    function getWatchHistory() {
+      try {
+        return JSON.parse(localStorage.getItem('ottWatchHistory')) || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveWatchProgress(movie, time, duration) {
+      if (!movie || !time || time < 5) return;
+      const history = getWatchHistory();
+      history[movie.stream_url] = {
+        movie: movie,
+        time: time,
+        duration: duration || 0,
+        percent: duration > 0 ? Math.min(100, Math.round((time / duration) * 100)) : 0,
+        updatedAt: Date.now()
+      };
+      localStorage.setItem('ottWatchHistory', JSON.stringify(history));
+      updateContinueWatchingUI();
+    }
+
+    function updateContinueWatchingUI() {
+      const history = getWatchHistory();
+      const section = document.getElementById('continueWatchingSection');
+      const row = document.getElementById('continueWatchingRow');
+      if (!section || !row) return;
+
+      const items = Object.values(history).sort((a, b) => b.updatedAt - a.updatedAt);
+      if (items.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      row.innerHTML = '';
+
+      items.forEach(item => {
+        const m = item.movie;
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+        card.title = `${m.title} (${item.percent}% watched)`;
+        card.onclick = () => {
+          openPlayer(m);
+          // Resume at saved second
+          setTimeout(() => {
+            if (player && item.time) player.currentTime = item.time;
+          }, 300);
+        };
+
+        card.innerHTML = `
+          <img src="${m.poster}" alt="${m.title}" loading="lazy">
+          <div class="card-progress-bar">
+            <div class="card-progress-fill" style="width: ${item.percent}%;"></div>
+          </div>
+        `;
+        row.appendChild(card);
+      });
+    }
+
+    
+    // -------------------------------------------------------------
+    // Mobile Bottom Navigation Bar Actions
+    // -------------------------------------------------------------
+    function bottomNavAction(action) {
+      document.querySelectorAll('.bottom-nav .nav-item').forEach(item => item.classList.remove('active'));
+
+      if (action === 'home') {
+        document.getElementById('bNavHome').classList.add('active');
+        filterByTag('all', document.querySelector('.chip'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (action === 'search') {
+        document.getElementById('bNavSearch').classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const searchInput = document.getElementById('movieSearchInput');
+        if (searchInput) {
+          setTimeout(() => {
+            searchInput.focus();
+            searchInput.select();
+          }, 300);
+        }
+      } else if (action === 'trending') {
+        document.getElementById('bNavTrending').classList.add('active');
+        const trendingSec = document.getElementById('trendingSection');
+        if (trendingSec) {
+          trendingSec.style.display = 'block';
+          trendingSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else if (action === 'mylist') {
+        document.getElementById('bNavMyList').classList.add('active');
+        const myListChip = document.querySelector('.chip-mylist');
+        filterByTag('mylist', myListChip);
+        const mySec = document.getElementById('myListSection');
+        if (mySec) {
+          mySec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+
+    
+    // -------------------------------------------------------------
+    // 1. App Splash Screen Timer
+    // -------------------------------------------------------------
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        if (splash) splash.classList.add('fade-out');
+      }, 1600);
+    });
+
+    // -------------------------------------------------------------
+    // 2. Double Tap to Seek (±10s) on Video Player
+    // -------------------------------------------------------------
+    const playerWrapper = document.querySelector('.player-wrapper');
+    const seekLeft = document.getElementById('seekLeftRipple');
+    const seekRight = document.getElementById('seekRightRipple');
+    let lastTapTime = 0;
+    let tapTimeout = null;
+
+    if (playerWrapper) {
+      playerWrapper.addEventListener('click', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+
+        if (tapLength < 350 && tapLength > 50) {
+          // Double Tap Detected!
+          clearTimeout(tapTimeout);
+          const rect = playerWrapper.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const isLeft = clickX < (rect.width / 2);
+
+          if (isLeft) {
+            // Seek Backwards 10s
+            player.currentTime = Math.max(0, player.currentTime - 10);
+            triggerRipple(seekLeft);
+          } else {
+            // Seek Forward 10s
+            player.currentTime = Math.min(player.duration || 9999, player.currentTime + 10);
+            triggerRipple(seekRight);
+          }
+        }
+        lastTapTime = currentTime;
+      });
+    }
+
+    function triggerRipple(elem) {
+      if (!elem) return;
+      elem.classList.remove('show');
+      void elem.offsetWidth; // force reflow
+      elem.classList.add('show');
+      setTimeout(() => elem.classList.remove('show'), 550);
+    }
+
+    // -------------------------------------------------------------
+    // 3. Auto Fullscreen on Device Rotation (Landscape)
+    // -------------------------------------------------------------
+    window.addEventListener('orientationchange', () => {
+      if (modal.classList.contains('active')) {
+        if (window.orientation === 90 || window.orientation === -90) {
+          // Landscape: Enter Fullscreen
+          if (player && player.fullscreen && !player.fullscreen.active) {
+            player.fullscreen.enter();
+          }
+        } else if (window.orientation === 0 || window.orientation === 180) {
+          // Portrait: Exit Fullscreen
+          if (player && player.fullscreen && player.fullscreen.active) {
+            player.fullscreen.exit();
+          }
+        }
+      }
+    });
+
+    // -------------------------------------------------------------
+    // 4. Double Back to Exit App Prevention
+    // -------------------------------------------------------------
+    let lastBackPressTime = 0;
+    const toast = document.getElementById('appToast');
+
+    window.addEventListener('popstate', (e) => {
+      // If modal was open, back closes modal (already handled)
+      if (modal.classList.contains('active')) {
+        return;
+      }
+
+      // If at home, require double back within 2 seconds
+      const now = Date.now();
+      if (now - lastBackPressTime < 2000) {
+        // Allow exit
+        return;
+      }
+
+      // Prevent immediate close, show toast
+      lastBackPressTime = now;
+      history.pushState(null, '', window.location.href);
+      if (toast) {
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      }
+    });
+
+    // Push initial history entry to catch first back press
+    history.pushState(null, '', window.location.href);
+
+    
+    // Report Broken Link to WhatsApp / Telegram
+    function reportBrokenLink() {
+      const movie = window.currentActiveMovie;
+      const movieTitle = movie ? (movie.title || 'Movie') : 'Video';
+      const msg = `🚨 *Link Issue Report* 🚨\n\nMovie: ${movieTitle}\nProblem: Video is not playing / Broken stream link.\nPlease fix it!`;
+      const waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(msg);
+      window.location.href = waUrl;
+    }
+
+    // Network Online / Offline Detection
+    window.addEventListener('offline', () => {
+      const b = document.getElementById('offlineBanner');
+      if (b) b.style.display = 'block';
+    });
+    window.addEventListener('online', () => {
+      const b = document.getElementById('offlineBanner');
+      if (b) b.style.display = 'none';
+    });
+
+    
+    // -------------------------------------------------------------
+    // Player Gestures: Vertical Swipe for Brightness & Volume
+    // -------------------------------------------------------------
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let currentBrightness = 1.0;
+    const brightnessHud = document.getElementById('brightnessHud');
+    const brightnessFill = document.getElementById('brightnessFill');
+    const brightnessText = document.getElementById('brightnessText');
+    const brightnessShade = document.getElementById('brightnessShade');
+    const volumeHud = document.getElementById('volumeHud');
+    const volumeFill = document.getElementById('volumeFill');
+    const volumeText = document.getElementById('volumeText');
+
+    if (playerWrapper) {
+      playerWrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStartY = e.touches[0].clientY;
+          touchStartX = e.touches[0].clientX;
+        }
+      }, { passive: true });
+
+      playerWrapper.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+          const deltaY = touchStartY - e.touches[0].clientY;
+          const rect = playerWrapper.getBoundingClientRect();
+          const isLeft = (touchStartX - rect.left) < (rect.width / 2);
+
+          if (Math.abs(deltaY) > 15) {
+            if (isLeft) {
+              // Adjust Brightness
+              currentBrightness = Math.min(1.0, Math.max(0.15, currentBrightness + (deltaY > 0 ? 0.02 : -0.02)));
+              if (brightnessShade) brightnessShade.style.opacity = (1 - currentBrightness);
+              if (brightnessFill) brightnessFill.style.width = Math.round(currentBrightness * 100) + '%';
+              if (brightnessText) brightnessText.textContent = Math.round(currentBrightness * 100) + '%';
+              if (brightnessHud) {
+                brightnessHud.classList.add('show');
+                clearTimeout(window.bHudTimer);
+                window.bHudTimer = setTimeout(() => brightnessHud.classList.remove('show'), 700);
+              }
+            } else {
+              // Adjust Volume
+              if (player) {
+                const newVol = Math.min(1.0, Math.max(0.0, player.volume + (deltaY > 0 ? 0.03 : -0.03)));
+                player.volume = newVol;
+                if (volumeFill) volumeFill.style.width = Math.round(newVol * 100) + '%';
+                if (volumeText) volumeText.textContent = Math.round(newVol * 100) + '%';
+                if (volumeHud) {
+                  volumeHud.classList.add('show');
+                  clearTimeout(window.vHudTimer);
+                  window.vHudTimer = setTimeout(() => volumeHud.classList.remove('show'), 700);
+                }
+              }
+            }
+            touchStartY = e.touches[0].clientY;
+          }
+        }
+      }, { passive: true });
+    }
+
+    // -------------------------------------------------------------
+    // PiP (Picture-in-Picture) Mode
+    // -------------------------------------------------------------
+    async function togglePiP() {
+      try {
+        const videoElem = document.getElementById('netflixPlayer');
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (videoElem && videoElem.requestPictureInPicture) {
+          await videoElem.requestPictureInPicture();
+        } else {
+          alert('Picture-in-Picture is not supported on this browser.');
+        }
+      } catch (err) {
+        console.log('PiP Error:', err);
+      }
+    }
+
+
+
+    window.onload = loadMovies;
+  </script>
+</body>
+</html>
