@@ -1,4 +1,4 @@
- 
+
 name: Build PLAY MAX APK
 
 on:
@@ -27,9 +27,9 @@ jobs:
           gradle-version: '8.13'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK
+      - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Build PLAY MAX APK
@@ -41,3 +41,4 @@ jobs:
         with:
           name: PLAY-MAX-APK
           path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
+ 
