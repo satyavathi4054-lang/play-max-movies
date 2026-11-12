@@ -1,0 +1,43 @@
+ 
+name: Build PLAY MAX APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
+        run: unzip PLAY_MAX_Android_Source.zip -d android-source
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build PLAY MAX APK
+        working-directory: android-source/PLAY_MAX_Android_Source
+        run: gradle assembleDebug
+
+      - name: Upload PLAY MAX APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PLAY-MAX-APK
+          path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
