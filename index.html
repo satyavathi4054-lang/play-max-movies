@@ -1115,28 +1115,6 @@
       margin-left: 12px;
     }
 
-    /* Report Link Button in Player Details */
-    .btn-report {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255, 255, 255, 0.08);
-      color: #ff9800;
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 9px 15px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 152, 0, 0.3);
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-    .btn-report:hover {
-      background: rgba(255, 152, 0, 0.2);
-      border-color: #ff9800;
-      color: #ffb74d;
-      transform: translateY(-2px);
-    }
-
   
 
 
@@ -1181,26 +1159,6 @@
       height: 100%;
       background: var(--netflix-red);
       width: 50%;
-    }
-
-    /* Copy Link & Sleep Timer Action Buttons */
-    .btn-pip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255, 255, 255, 0.08);
-      color: #FFFFFF;
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 9px 15px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-    .btn-pip:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
     }
 
   </style>
@@ -1343,7 +1301,7 @@
     <div class="footer-links">
       <span onclick="window.scrollTo({top:0, behavior:'smooth'})">Back to Top ↑</span>
       <span onclick="filterByTag('mylist', document.querySelector('.chip-mylist'))">My Watchlist</span>
-      <span onclick="filterByTag('trending', document.querySelectorAll('.chip')[6])">Trending</span>
+      <span onclick="filterByTag('trending', document.querySelectorAll('.chip')[5])">Trending</span>
     </div>
     <p class="footer-copy">© 2026 Play Max. All rights reserved.</p>
   </footer>
@@ -1444,24 +1402,7 @@
             </svg>
             Share
           </button>
-          <button id="modalPipBtn" class="btn-pip" onclick="togglePiP()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <rect x="12" y="9" width="8" height="6" rx="1"></rect>
-            </svg>
-            PiP Mode
-          </button>
-
-
-
-          <button id="modalReportBtn" class="btn-report" onclick="reportBrokenLink()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-              <line x1="4" y1="22" x2="4" y2="15"></line>
-            </svg>
-            Report Link
-          </button>
-        </div>
+</div>
 
         <p id="modalDescription" class="modal-movie-desc"></p>
 
@@ -1487,6 +1428,7 @@
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script>
     const MOVIES_SPREADSHEET_ID = "1-u-xwuZAyp6rElb0p7jxAxzLSBtCcIXWnJMueaeDPS8";
+    const SERIES_SPREADSHEET_ID = "14Kkohl1gNyefw7BzdVTcOOPTOddpYjCVdNbBCGT1Q6I";
 
     // Method 1: JSONP Loader (100% immune to CORS on mobile file:// and content://)
     function fetchViaJSONP(sheetId, tabName) {
@@ -1759,9 +1701,17 @@ const otherMovies = allMoviesData.filter(m => {
     // Load data directly from Google Sheets
     async function loadMovies() {
       try {
-        // Fetch data only from the Movies Google Sheet
+        // Fetch Movies and Web Series
         let movies = await getSheetData(MOVIES_SPREADSHEET_ID, 'Sheet1');
-        allMoviesData = [...movies];
+        let series = await getSheetData(SERIES_SPREADSHEET_ID, 'Sheet1');
+
+        series.forEach(s => {
+          if (!s.category || !s.category.toLowerCase().includes('series')) {
+            s.category = (s.category ? s.category + ', ' : '') + 'Web Series';
+          }
+        });
+
+        allMoviesData = [...movies, ...series];
 
         const trendingRow = document.getElementById('trendingRow');
         const teluguRow = document.getElementById('teluguRow');
@@ -1781,7 +1731,7 @@ const otherMovies = allMoviesData.filter(m => {
         allMoviesRow.innerHTML = '';
         heroContainer.innerHTML = '';
 
-        if (!allMoviesData || allMoviesData.length === 0) return;
+        if (!movies || movies.length === 0) return;
 
         // Build Hero Slides (First 3 movies)
         const heroMovies = movies.slice(0, 3);
@@ -1831,7 +1781,7 @@ const otherMovies = allMoviesData.filter(m => {
         }
 
         // Categorize movies dynamically
-        allMoviesData.forEach(m => {
+        movies.forEach(m => {
           const cat = (m.category || '').toLowerCase();
           const card = createCard(m);
 
@@ -2130,7 +2080,7 @@ const otherMovies = allMoviesData.filter(m => {
           if (sections[k]) sections[k].style.display = (k === 'all') ? 'block' : 'none';
         });
         allMoviesData.forEach(m => {
-          const match = ((m.description || '') + ' ' + (m.category || '')).toLowerCase().includes(tag);
+          const match = (m.description || '' + m.category || '').toLowerCase().includes(tag);
           document.querySelectorAll(`.movie-card img[alt="${m.title}"]`).forEach(img => {
             const card = img.closest('.movie-card');
             if (card) card.style.display = match ? 'block' : 'none';
@@ -2348,18 +2298,7 @@ const otherMovies = allMoviesData.filter(m => {
 
     // Push initial history entry to catch first back press
     history.pushState(null, '', window.location.href);
-
-    
-    // Report Broken Link to WhatsApp / Telegram
-    function reportBrokenLink() {
-      const movie = window.currentActiveMovie;
-      const movieTitle = movie ? (movie.title || 'Movie') : 'Video';
-      const msg = `🚨 *Link Issue Report* 🚨\n\nMovie: ${movieTitle}\nProblem: Video is not playing / Broken stream link.\nPlease fix it!`;
-      const waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(msg);
-      window.location.href = waUrl;
-    }
-
-    // Network Online / Offline Detection
+// Network Online / Offline Detection
     window.addEventListener('offline', () => {
       const b = document.getElementById('offlineBanner');
       if (b) b.style.display = 'block';
@@ -2428,24 +2367,6 @@ const otherMovies = allMoviesData.filter(m => {
           }
         }
       }, { passive: true });
-    }
-
-    // -------------------------------------------------------------
-    // PiP (Picture-in-Picture) Mode
-    // -------------------------------------------------------------
-    async function togglePiP() {
-      try {
-        const videoElem = document.getElementById('netflixPlayer');
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
-        } else if (videoElem && videoElem.requestPictureInPicture) {
-          await videoElem.requestPictureInPicture();
-        } else {
-          alert('Picture-in-Picture is not supported on this browser.');
-        }
-      } catch (err) {
-        console.log('PiP Error:', err);
-      }
     }
 
 
