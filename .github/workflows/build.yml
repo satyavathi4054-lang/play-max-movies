@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract Final Android project
-        run: unzip PLAY_MAX_Android_Source_FINAL.zip -d android-source
+        run: unzip PLAY_MAX_Android_Source_FINAL_TELEGRAM_ADS_ICON.zip -d android-source
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
