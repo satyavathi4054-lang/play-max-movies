@@ -1,0 +1,9 @@
+{
+  "name": "Play Max Movies",
+  "short_name": "PlayMax",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#E50914",
+  "icons": []
+}
