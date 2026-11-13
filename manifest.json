@@ -6,12 +6,5 @@
   "background_color": "#141414",
   "theme_color": "#E50914",
   "description": "Your world of cinema and streaming entertainment",
-  "icons": [
-    {
-      "src": "https://raw.githubusercontent.com/satyavathi4054-lang/play-max-movies/main/index.html",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
-  ]
+  "icons": []
 }
- 
