@@ -1,15 +1,13 @@
- {
-  "name": "Play Max",
-  "short_name": "PlayMax",
-  "start_url": "./index.html",
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#ff0000",
-  "icons": [
-    {
-      "src": "play_max_logo_final.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
+  "name": "* Play Max",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "* PlayMax",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "id": "/play-max-movies/",
+  "description": "Play Max Movies &amp;\nSeries Streaming"
+} 
