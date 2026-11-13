@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract Android project
-        run: unzip PLAY_MAX_RESTORE_FIRST_DEMO_PLAYER.zip -d android-source
+        run: unzip PLAY_MAX_UNIVERSAL_NATIVE_PLAYER.zip -d android-source
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
