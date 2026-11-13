@@ -1,5 +1,5 @@
  
-name: Build PLAY MAX APK
+name:   Build Play Max APK
 
 on:
   workflow_dispatch:
