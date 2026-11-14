@@ -1,20 +1,18 @@
 
-name: Build Play Max APK
+name: Build PLAY MAX VLC APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
     paths:
-      - 'PLAY_MAX_PLAYER_DIRECT_STREAM_PATCH.zip'
+      - 'PLAY_MAX_VLC_INTEGRATION_SOURCE.zip'
       - '.github/workflows/build.yml'
 
 permissions:
   contents: read
-
-env:
-  JAVA_VERSION: '17'
-  GRADLE_VERSION: '8.13'
 
 jobs:
   build:
@@ -24,13 +22,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify new source ZIP exists
-        run: test -f PLAY_MAX_PLAYER_DIRECT_STREAM_PATCH.zip
+      - name: Verify new VLC source ZIP
+        run: test -f PLAY_MAX_VLC_INTEGRATION_SOURCE.zip
 
-      - name: Extract updated PLAY MAX source
+      - name: Extract PLAY MAX VLC source
         run: |
           mkdir -p android-source
-          unzip -o PLAY_MAX_PLAYER_DIRECT_STREAM_PATCH.zip -d android-source
+          unzip -q PLAY_MAX_VLC_INTEGRATION_SOURCE.zip -d android-source
           test -f android-source/PLAY_MAX_Android_Source/app/build.gradle
           test -f android-source/PLAY_MAX_Android_Source/settings.gradle
 
@@ -42,8 +40,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -51,15 +47,14 @@ jobs:
           accept-android-sdk-licenses: true
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
-      - name: Build debug APK
+      - name: Build PLAY MAX debug APK
         working-directory: android-source/PLAY_MAX_Android_Source
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-PLAYER-FIX-APK
+          name: PLAY-MAX-VLC-APK
           path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
- 
