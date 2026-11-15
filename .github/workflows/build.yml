@@ -1,11 +1,13 @@
 
-name: PLAY MAX APK Build
+name: PLAY MAX VIDEO FIXES APK BUILD
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -15,48 +17,37 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.13
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK
+      - name: Extract Video Fixes ZIP
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Extract PLAY MAX Source ZIP
-        run: |
-          unzip -q PLAY_MAX_VLC_SMOOTH_SCROLL_NO_X_SOURCE.zip -d source
-
-      - name: Locate Android Project
-        run: |
-          PROJECT_DIR=$(dirname "$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)")
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android Gradle project not found!"
-            exit 1
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
-          echo "Project found: $PROJECT_DIR"
+          unzip -q "PLAY MAX VIDEO FIXES.zip" -d extracted
 
       - name: Build Debug APK
-        run: |
-          cd "$PROJECT_DIR"
-          gradle --no-daemon :app:assembleDebug
+        working-directory: extracted/PLAY_MAX_Android_Source
+        run: gradle --no-daemon :app:assembleDebug
 
-      - name: Upload PLAY MAX APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-SMOOTH-SCROLL-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          name: PLAY-MAX-VIDEO-FIXES-APK
+          path: extracted/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 14
  
