@@ -25,8 +25,6 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: ''
 
       - name: Install SDK Packages
         run: |
@@ -35,9 +33,25 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Extract Video Fixes ZIP
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Find and Extract ZIP
         run: |
-          unzip -q "PLAY MAX VIDEO FIXES.zip" -d extracted
+          ZIP_FILE=$(find . -maxdepth 3 -type f -iname '*VIDEO*FIXES*.zip' | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Video Fixes ZIP not found!"
+            echo "Repository files:"
+            find . -maxdepth 3 -type f
+            exit 1
+          fi
+
+          echo "Found ZIP: $ZIP_FILE"
+          mkdir -p extracted
+          unzip -q "$ZIP_FILE" -d extracted
 
       - name: Locate Android Project
         run: |
@@ -46,13 +60,14 @@ jobs:
             -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project not found"
+            echo "Android Gradle project not found!"
+            find extracted -maxdepth 4 -type f
             exit 1
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           if [ -f "$PROJECT_DIR/gradlew" ]; then
             chmod +x "$PROJECT_DIR/gradlew"
