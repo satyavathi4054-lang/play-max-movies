@@ -1,5 +1,4 @@
-
-name: Build PLAY MAX VLC APK
+name: Build PLAY MAX APK
 
 on:
   workflow_dispatch:
@@ -7,9 +6,6 @@ on:
     branches:
       - main
       - master
-    paths:
-      - 'PLAY_MAX_VLC_INTEGRATION_SOURCE.zip'
-      - '.github/workflows/build.yml'
 
 permissions:
   contents: read
@@ -20,62 +16,56 @@ env:
 
 jobs:
   build:
-    name: Build PLAY MAX VLC APK
+    name: Build PLAY MAX APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify VLC source ZIP
+      - name: Verify ZIP File
         run: |
-          test -f PLAY_MAX_VLC_INTEGRATION_SOURCE.zip
-          echo "VLC source ZIP found"
+          test -f "PLAY_MAX_Android_Source_Fixed (1).zip"
+          echo "ZIP file found successfully"
 
-      - name: Extract PLAY MAX source
+      - name: Extract ZIP File
         run: |
-          mkdir -p android-source
-          unzip -q PLAY_MAX_VLC_INTEGRATION_SOURCE.zip -d android-source
-
-          test -f android-source/PLAY_MAX_Android_Source/app/build.gradle
-          test -f android-source/PLAY_MAX_Android_Source/settings.gradle
-
-          echo "Source extraction successful"
+          mkdir -p android_source
+          unzip -q "PLAY_MAX_Android_Source_Fixed (1).zip" -d android_source
+          test -d android_source/PLAY_MAX_Android_Source
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: '17'
+          distribution: 'temurin'
+          java-version: '${{ env.JAVA_VERSION }}'
 
       - name: Set up Gradle 8.13
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.13'
+          gradle-version: '${{ env.GRADLE_VERSION }}'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-licenses: true
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Check Gradle version
         run: gradle --version
 
       - name: Build PLAY MAX debug APK
-        working-directory: android-source/PLAY_MAX_Android_Source
+        working-directory: android_source/PLAY_MAX_Android_Source
         run: |
-          gradle --no-daemon :app:assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Verify APK
         run: |
-          test -f android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          test -f android_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           echo "APK created successfully"
 
-      - name: Upload PLAY MAX VLC APK
+      - name: Upload PLAY MAX Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-VLC-APK
-          path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          name: PLAY-MAX-debug-apk
+          path: android_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
