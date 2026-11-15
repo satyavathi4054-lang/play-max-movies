@@ -1,122 +1,45 @@
 
-name: PLAY MAX VLC APK Build
+name: PLAY MAX Android APK Build
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    paths:
-      - 'PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip'
-      - '.github/workflows/build.yml'
+    branches: [ main, master ]
 
 permissions:
   contents: read
 
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.13'
+
 jobs:
-  build:
-    name: Build PLAY MAX VLC APK
+  build-debug-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Verify Source ZIP
-        run: |
-          test -f PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip
-          echo "VLC source ZIP found"
-
-      - name: Extract Android Source
-        run: |
-          mkdir -p android-source
-          unzip -o PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip -d android-source
-
-      - name: Find Android Project
-        shell: bash
-        run: |
-          PROJECT_FILE=$(find android-source -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -print -quit)
-
-          if [ -z "$PROJECT_FILE" ]; then
-            echo "ERROR: settings.gradle not found"
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$PROJECT_FILE")
-
-          if [ ! -f "$PROJECT_DIR/app/build.gradle" ] && \
-             [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
-            echo "ERROR: App Gradle file not found"
-            exit 1
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Setup Java 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-          cache: gradle
+          java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: 'latest'
-
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
-
-      - name: Install Android SDK Packages
-        run: |
-          sdkmanager --sdk_root="$ANDROID_HOME" --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Verify Android SDK
-        run: |
-          adb version
-          sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
-
-      - name: Setup Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
-      - name: Build Debug APK
-        shell: bash
-        run: |
-          cd "$PROJECT_DIR"
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
 
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew --no-daemon :app:assembleDebug
-          else
-            gradle --no-daemon :app:assembleDebug
-          fi
-
-      - name: Verify APK
-        shell: bash
-        run: |
-          APK=$(find "$PROJECT_DIR/app/build/outputs/apk/debug" \
-            -name '*.apk' -type f -print -quit)
-
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK not generated"
-            exit 1
-          fi
-
-          echo "APK generated: $APK"
-
-      - name: Upload PLAY MAX VLC APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-VLC-DEBUG-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          name: PLAY-MAX-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
  
