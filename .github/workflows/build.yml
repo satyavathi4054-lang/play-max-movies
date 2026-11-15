@@ -36,12 +36,12 @@ jobs:
 
       - name: Extract PLAY MAX Source ZIP
         run: |
-          unzip -q PLAY_MAX_TWO_LAYER_VLC_CORNER_FIX_SOURCE.zip -d source
+          unzip -q PLAY_MAX_VLC_SMOOTH_SCROLL_NO_X_SOURCE.zip -d source
 
       - name: Locate Android Project
         run: |
           PROJECT_DIR=$(dirname "$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)")
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+          if [ -z "$PROJECT_DIR" ]; then
             echo "ERROR: Android Gradle project not found!"
             exit 1
           fi
@@ -56,7 +56,7 @@ jobs:
       - name: Upload PLAY MAX APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-DEBUG-APK
+          name: PLAY-MAX-SMOOTH-SCROLL-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
  
