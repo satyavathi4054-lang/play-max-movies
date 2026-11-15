@@ -1,4 +1,5 @@
-name: Build PLAY MAX APK
+ 
+name: PLAY MAX APK Build
 
 on:
   workflow_dispatch:
@@ -10,63 +11,43 @@ on:
 permissions:
   contents: read
 
-env:
-  JAVA_VERSION: '17'
-  GRADLE_VERSION: '8.13'
-
 jobs:
   build:
-    name: Build PLAY MAX APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Verify ZIP File
-        run: |
-          test -f "PLAY_MAX_Android_Source_Fixed (1).zip"
-          echo "ZIP file found successfully"
-
-      - name: Extract ZIP File
-        run: |
-          mkdir -p android_source
-          unzip -q "PLAY_MAX_Android_Source_Fixed (1).zip" -d android_source
-          test -d android_source/PLAY_MAX_Android_Source
-
-      - name: Set up JDK 17
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '${{ env.JAVA_VERSION }}'
+          distribution: temurin
+          java-version: '17'
 
-      - name: Set up Gradle 8.13
-        uses: gradle/actions/setup-gradle@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '${{ env.GRADLE_VERSION }}'
+          gradle-version: '8.13'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Check Gradle version
-        run: gradle --version
-
-      - name: Build PLAY MAX debug APK
-        working-directory: android_source/PLAY_MAX_Android_Source
+      - name: Find Android Project
+        shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          PROJECT_DIR=$(find . -name settings.gradle -not -path '*/.gradle/*' -printf '%h\n' | head -n 1)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_DIR"
 
-      - name: Verify APK
-        run: |
-          test -f android_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
-          echo "APK created successfully"
+      - name: Build Debug APK
+        run: gradle --no-daemon -p "$PROJECT_DIR" :app:assembleDebug
 
-      - name: Upload PLAY MAX Debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-debug-apk
-          path: android_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
- 
