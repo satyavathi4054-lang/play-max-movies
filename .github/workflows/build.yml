@@ -19,23 +19,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Verify Source ZIP
       - name: Check Source ZIP
         run: |
           test -f PLAY_MAX_VLC_INLINE_CORRECTED_SOURCE.zip
-          echo "Source ZIP found successfully"
+          echo "Source ZIP found"
 
-      # 3. Extract Android Project
       - name: Extract Android Source
         run: |
           mkdir -p android-source
           unzip -o PLAY_MAX_VLC_INLINE_CORRECTED_SOURCE.zip -d android-source
 
-      # 4. Locate Android Project
       - name: Find Android Project
         shell: bash
         run: |
@@ -44,7 +40,7 @@ jobs:
             -print -quit)
 
           if [ -z "$PROJECT_FILE" ]; then
-            echo "ERROR: settings.gradle not found"
+            echo "ERROR: Android settings.gradle not found"
             exit 1
           fi
 
@@ -57,9 +53,7 @@ jobs:
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Android project: $PROJECT_DIR"
 
-      # 5. Install Java 17
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -67,30 +61,33 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # 6. Setup Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: 'latest'
-          accept-android-sdk-licenses: true
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
 
-      # 7. Verify Android SDK
+      - name: Accept Android SDK Licenses
+        shell: bash
+        run: |
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
+
+      - name: Install Android SDK Packages
+        run: |
+          sdkmanager --sdk_root="$ANDROID_HOME" --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
       - name: Verify Android SDK
         run: |
           adb version
-          sdkmanager --list_installed
+          sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
 
-      # 8. Setup Gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      # 9. Build Android APK
       - name: Build Debug APK
         shell: bash
         run: |
@@ -103,20 +100,19 @@ jobs:
             gradle --no-daemon :app:assembleDebug
           fi
 
-      # 10. Verify APK
       - name: Verify APK
+        shell: bash
         run: |
           APK=$(find "$PROJECT_DIR/app/build/outputs/apk/debug" \
             -name '*.apk' -type f -print -quit)
 
           if [ -z "$APK" ]; then
-            echo "ERROR: APK was not generated"
+            echo "APK NOT FOUND"
             exit 1
           fi
 
-          echo "APK generated successfully: $APK"
+          echo "APK CREATED: $APK"
 
-      # 11. Upload APK
       - name: Upload PLAY MAX APK
         uses: actions/upload-artifact@v4
         with:
