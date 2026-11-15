@@ -1,5 +1,5 @@
 
-name: PLAY MAX Android APK Build
+name: PLAY MAX VLC APK Build
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
     branches:
       - main
     paths:
-      - 'PLAY_MAX_VLC_INLINE_CORRECTED_SOURCE.zip'
+      - 'PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip'
       - '.github/workflows/build.yml'
 
 permissions:
@@ -15,22 +15,22 @@ permissions:
 
 jobs:
   build:
-    name: Build PLAY MAX APK
+    name: Build PLAY MAX VLC APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Check Source ZIP
+      - name: Verify Source ZIP
         run: |
-          test -f PLAY_MAX_VLC_INLINE_CORRECTED_SOURCE.zip
-          echo "Source ZIP found"
+          test -f PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip
+          echo "VLC source ZIP found"
 
       - name: Extract Android Source
         run: |
           mkdir -p android-source
-          unzip -o PLAY_MAX_VLC_INLINE_CORRECTED_SOURCE.zip -d android-source
+          unzip -o PLAY_MAX_VLC_PLAYER_VISIBILITY_FIX.zip -d android-source
 
       - name: Find Android Project
         shell: bash
@@ -40,7 +40,7 @@ jobs:
             -print -quit)
 
           if [ -z "$PROJECT_FILE" ]; then
-            echo "ERROR: Android settings.gradle not found"
+            echo "ERROR: settings.gradle not found"
             exit 1
           fi
 
@@ -67,7 +67,6 @@ jobs:
           cmdline-tools-version: 'latest'
 
       - name: Accept Android SDK Licenses
-        shell: bash
         run: |
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
 
@@ -107,16 +106,16 @@ jobs:
             -name '*.apk' -type f -print -quit)
 
           if [ -z "$APK" ]; then
-            echo "APK NOT FOUND"
+            echo "ERROR: APK not generated"
             exit 1
           fi
 
-          echo "APK CREATED: $APK"
+          echo "APK generated: $APK"
 
-      - name: Upload PLAY MAX APK
+      - name: Upload PLAY MAX VLC APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-DEBUG-APK
+          name: PLAY-MAX-VLC-DEBUG-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
