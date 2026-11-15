@@ -23,31 +23,26 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
       - name: Set up Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
+            -name sdkmanager -type f | head -1)
 
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-
-          if [ ! -f "$SDKMANAGER" ]; then
-            SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
-              -name sdkmanager -type f | head -1)
-          fi
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager not found"
-            exit 1
-          fi
-
-          echo "SDK Manager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses || true
 
           "$SDKMANAGER" --install \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
+
+      - name: Verify Gradle
+        run: gradle --version
 
       - name: Extract source ZIP
         run: |
@@ -58,7 +53,7 @@ jobs:
             -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "Source ZIP not found in repository"
+            echo "Source ZIP not found"
             exit 1
           fi
 
@@ -74,25 +69,17 @@ jobs:
 
           if [ -z "$PROJECT_FILE" ]; then
             echo "Gradle settings file not found"
-            find android-source -maxdepth 5 -type f
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$PROJECT_FILE")
           echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "Project found: $PROJECT_DIR"
+          echo "Project: $PROJECT_DIR"
 
       - name: Build Debug APK
         run: |
-          PROJECT="${{ steps.project.outputs.dir }}"
-          cd "$PROJECT"
-
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew --no-daemon :app:assembleDebug
-          else
-            gradle --no-daemon :app:assembleDebug
-          fi
+          cd "${{ steps.project.outputs.dir }}"
+          gradle --no-daemon :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
