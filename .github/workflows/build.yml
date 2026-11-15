@@ -25,10 +25,8 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
-        run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+        with:
+          packages: 'platform-tools,platforms;android-36,build-tools;36.0.0'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -39,15 +37,24 @@ jobs:
         run: |
           unzip -q "PLAY MAX VIDEO FIXES.zip" -d extracted
 
+      - name: Locate Android Project
+        run: |
+          PROJECT_DIR=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -printf '%h\n' | head -n 1)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Android Gradle project not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
       - name: Build Debug APK
-        working-directory: extracted/PLAY_MAX_Android_Source
-        run: gradle --no-daemon :app:assembleDebug
+        run: |
+          gradle --no-daemon -p "$PROJECT_DIR" :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-VIDEO-FIXES-APK
-          path: extracted/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          path: '**/app/build/outputs/apk/debug/app-debug.apk'
           if-no-files-found: error
           retention-days: 14
  
