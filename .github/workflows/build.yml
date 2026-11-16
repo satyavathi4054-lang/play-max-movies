@@ -1,5 +1,5 @@
 
-name: PLAY MAX APK Build
+name: PLAY MAX Background Lock VLC Fix
 
 on:
   workflow_dispatch:
@@ -34,8 +34,9 @@ jobs:
         shell: bash
         run: |
           set -e
+
           ZIP_FILE=$(find . -maxdepth 2 -type f \
-            -name 'PLAY_MAX_DOWNLOAD_VLC_STOP_FIX.zip' \
+            -name 'PLAY_MAX_BACKGROUND_LOCK_VLC_FIX.zip' \
             -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
@@ -70,7 +71,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-DOWNLOAD-FIX-APK
+          name: PLAY-MAX-BACKGROUND-LOCK-FIX-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
