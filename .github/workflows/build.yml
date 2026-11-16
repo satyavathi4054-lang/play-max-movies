@@ -23,13 +23,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK Packages
+      - name: Find Android SDK Manager
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          yes | sdkmanager --licenses || true
-          sdkmanager --install "platform-tools"
-          sdkmanager --install "platforms;android-36"
-          sdkmanager --install "build-tools;36.0.0"
+          SDKMANAGER=$(find "$ANDROID_HOME" -type f -name sdkmanager | head -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            find "$ANDROID_HOME" -maxdepth 5 -type f | head -100
+            exit 1
+          fi
+
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "SDKMANAGER_DIR=$(dirname "$SDKMANAGER")" >> "$GITHUB_ENV"
+
+      - name: Install Android SDK Packages
+        run: |
+          yes | "$SDKMANAGER" --licenses || true
+
+          "$SDKMANAGER" --install "platform-tools"
+          "$SDKMANAGER" --install "platforms;android-36"
+          "$SDKMANAGER" --install "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -39,10 +53,12 @@ jobs:
       - name: Extract Source ZIP
         run: |
           ZIP_FILE=$(find . -maxdepth 3 -type f -iname '*VIDEO*FIXES*.zip' | head -n 1)
+
           if [ -z "$ZIP_FILE" ]; then
             echo "Source ZIP not found"
             exit 1
           fi
+
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
