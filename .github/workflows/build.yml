@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup JDK 17
@@ -23,12 +23,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK Packages
         run: |
-          yes | sdkmanager --licenses
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | sdkmanager --licenses || true
           sdkmanager --install "platform-tools"
           sdkmanager --install "platforms;android-36"
           sdkmanager --install "build-tools;36.0.0"
@@ -40,15 +38,22 @@ jobs:
 
       - name: Extract Source ZIP
         run: |
-          unzip -q "PLAY_MAX_VIDEO_FIXES_WORKING.zip" -d extracted
+          ZIP_FILE=$(find . -maxdepth 3 -type f -iname '*VIDEO*FIXES*.zip' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Source ZIP not found"
+            exit 1
+          fi
+          mkdir -p extracted
+          unzip -q "$ZIP_FILE" -d extracted
 
       - name: Locate Android Project
         run: |
           PROJECT_DIR=$(find extracted -type f \
-            -name settings.gradle -printf '%h\n' | head -n 1)
+            \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project not found!"
+            echo "Android project not found"
             exit 1
           fi
 
@@ -56,9 +61,12 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          gradle --no-daemon \
-            -p "$PROJECT_DIR" \
-            :app:assembleDebug
+          if [ -f "$PROJECT_DIR/gradlew" ]; then
+            chmod +x "$PROJECT_DIR/gradlew"
+            "$PROJECT_DIR/gradlew" --no-daemon :app:assembleDebug
+          else
+            gradle --no-daemon -p "$PROJECT_DIR" :app:assembleDebug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
