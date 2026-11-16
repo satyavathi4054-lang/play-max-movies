@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -30,17 +30,16 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Extract PLAY MAX Source ZIP
+      - name: Extract PLAY MAX Source
         shell: bash
         run: |
           set -e
-
           ZIP_FILE=$(find . -maxdepth 2 -type f \
-            -name 'PLAY_MAX_GOOGLE_SHEETS_ONLY_FIX.zip' \
+            -name 'PLAY_MAX_DOWNLOAD_VLC_STOP_FIX.zip' \
             -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Source ZIP not found in repository"
+            echo "ERROR: Source ZIP not found"
             exit 1
           fi
 
@@ -52,44 +51,26 @@ jobs:
             -print -quit)
 
           if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle not found after extraction"
+            echo "ERROR: settings.gradle not found"
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Project found: $PROJECT_DIR"
-
-      - name: Install Android SDK
-        shell: bash
+      - name: Build APK
         run: |
-          set -e
-
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -name sdkmanager -print -quit)
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: Android SDK Manager not found"
-            exit 1
+          if [ -f "$PROJECT_DIR/gradlew" ]; then
+            chmod +x "$PROJECT_DIR/gradlew"
+            "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+          else
+            gradle -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
           fi
-
-          yes | "$SDKMANAGER" --licenses || true
-
-          "$SDKMANAGER" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Build PLAY MAX APK
-        run: |
-          gradle -p "$PROJECT_DIR" \
-            --no-daemon \
-            :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-APK
+          name: PLAY-MAX-DOWNLOAD-FIX-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
