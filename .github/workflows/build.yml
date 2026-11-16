@@ -1,5 +1,5 @@
 
-name: PLAY MAX VIDEO FIXES APK BUILD
+name: PLAY MAX VIDEO FIXES BUILD
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup JDK 17
@@ -24,44 +24,31 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
-      - name: Install SDK Packages
+      - name: Install Android SDK Packages
         run: |
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
+          yes | sdkmanager --licenses
+          sdkmanager --install "platform-tools"
+          sdkmanager --install "platforms;android-36"
+          sdkmanager --install "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Find and Extract ZIP
+      - name: Extract Source ZIP
         run: |
-          ZIP_FILE=$(find . -maxdepth 3 -type f -iname '*VIDEO*FIXES*.zip' | head -n 1)
-
-          if [ -z "$ZIP_FILE" ]; then
-            echo "Video Fixes ZIP not found!"
-            echo "Repository files:"
-            find . -maxdepth 3 -type f
-            exit 1
-          fi
-
-          echo "Found ZIP: $ZIP_FILE"
-          mkdir -p extracted
-          unzip -q "$ZIP_FILE" -d extracted
+          unzip -q "PLAY_MAX_VIDEO_FIXES_WORKING.zip" -d extracted
 
       - name: Locate Android Project
         run: |
           PROJECT_DIR=$(find extracted -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -printf '%h\n' | head -n 1)
+            -name settings.gradle -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Android Gradle project not found!"
-            find extracted -maxdepth 4 -type f
+            echo "Android project not found!"
             exit 1
           fi
 
@@ -69,12 +56,9 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          if [ -f "$PROJECT_DIR/gradlew" ]; then
-            chmod +x "$PROJECT_DIR/gradlew"
-            "$PROJECT_DIR/gradlew" --no-daemon :app:assembleDebug
-          else
-            gradle --no-daemon -p "$PROJECT_DIR" :app:assembleDebug
-          fi
+          gradle --no-daemon \
+            -p "$PROJECT_DIR" \
+            :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
