@@ -1,5 +1,5 @@
 
-name: PLAY MAX Initial Movie AutoLoad Stable Fix
+name: PLAY MAX Startup AutoLoad Fix
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -30,37 +30,36 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Extract PLAY MAX Source
+      - name: Extract PLAY MAX ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE=$(find . -maxdepth 2 -type f \
-            -name 'PLAY_MAX_INITIAL_MOVIE_AUTOLOAD_STABLE_BASE_FIX.zip' \
-            -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_INITIAL_MOVIE_AUTOLOAD_STARTUP_REFRESH_FIX.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Source ZIP not found"
+            echo "ERROR: ZIP file not found!"
             exit 1
           fi
 
           mkdir -p source
           unzip -q "$ZIP_FILE" -d source
 
-          SETTINGS=$(find source -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -print -quit)
+          SETTINGS=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
 
           if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle not found"
+            echo "ERROR: settings.gradle not found!"
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build PLAY MAX APK
+      - name: Build APK
+        shell: bash
         run: |
+          set -e
+
           if [ -f "$PROJECT_DIR/gradlew" ]; then
             chmod +x "$PROJECT_DIR/gradlew"
             "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
@@ -71,7 +70,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-INITIAL-AUTOLOAD-STABLE-APK
+          name: PLAY-MAX-STARTUP-AUTOLOAD-FIX
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
