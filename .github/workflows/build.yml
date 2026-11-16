@@ -1,5 +1,5 @@
 
-name: PLAY MAX Android APK Build
+name: PLAY MAX APK Build
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -30,55 +30,61 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Find or Extract Android Project
+      - name: Extract PLAY MAX Source ZIP
         shell: bash
         run: |
           set -e
 
-          SETTINGS=$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f \
+            -name 'PLAY_MAX_GOOGLE_SHEETS_ONLY_FIX.zip' \
+            -print -quit)
 
-          if [ -z "$SETTINGS" ]; then
-            mkdir -p extracted_source
-            FOUND=""
-
-            while IFS= read -r ZIP; do
-              echo "Checking ZIP: $ZIP"
-              TEMP_DIR=$(mktemp -d)
-
-              if unzip -q "$ZIP" -d "$TEMP_DIR"; then
-                SETTINGS=$(find "$TEMP_DIR" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
-
-                if [ -n "$SETTINGS" ]; then
-                  cp -a "$TEMP_DIR"/. extracted_source/
-                  FOUND="yes"
-                  break
-                fi
-              fi
-
-              rm -rf "$TEMP_DIR"
-            done < <(find . -maxdepth 2 -type f -iname '*.zip' -not -path './.git/*')
-
-            if [ -z "$FOUND" ]; then
-              echo "ERROR: Android project not found."
-              echo "Upload the original Android source ZIP to the repository."
-              exit 1
-            fi
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: Source ZIP not found in repository"
+            exit 1
           fi
 
-          SETTINGS=$(find . extracted_source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' -print -quit)
-          PROJECT_DIR=$(dirname "$SETTINGS")
+          mkdir -p source
+          unzip -q "$ZIP_FILE" -d source
 
-          echo "Project directory: $PROJECT_DIR"
+          SETTINGS=$(find source -type f \
+            \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -print -quit)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle not found after extraction"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          echo "Project found: $PROJECT_DIR"
+
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -e
+
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager -print -quit)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: Android SDK Manager not found"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --licenses || true
+
+          "$SDKMANAGER" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Build PLAY MAX APK
         run: |
-          if [ -f "$PROJECT_DIR/gradlew" ]; then
-            chmod +x "$PROJECT_DIR/gradlew"
-            "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
-          else
-            gradle -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
-          fi
+          gradle -p "$PROJECT_DIR" \
+            --no-daemon \
+            :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
