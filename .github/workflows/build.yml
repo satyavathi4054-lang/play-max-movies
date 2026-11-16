@@ -30,23 +30,55 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Find Android Project
+      - name: Find or Extract Android Project
         shell: bash
         run: |
-          SETTINGS_FILE=$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          set -e
 
-          if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle not found"
-            exit 1
+          SETTINGS=$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' -print -quit)
+
+          if [ -z "$SETTINGS" ]; then
+            mkdir -p extracted_source
+            FOUND=""
+
+            while IFS= read -r ZIP; do
+              echo "Checking ZIP: $ZIP"
+              TEMP_DIR=$(mktemp -d)
+
+              if unzip -q "$ZIP" -d "$TEMP_DIR"; then
+                SETTINGS=$(find "$TEMP_DIR" -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+
+                if [ -n "$SETTINGS" ]; then
+                  cp -a "$TEMP_DIR"/. extracted_source/
+                  FOUND="yes"
+                  break
+                fi
+              fi
+
+              rm -rf "$TEMP_DIR"
+            done < <(find . -maxdepth 2 -type f -iname '*.zip' -not -path './.git/*')
+
+            if [ -z "$FOUND" ]; then
+              echo "ERROR: Android project not found."
+              echo "Upload the original Android source ZIP to the repository."
+              exit 1
+            fi
           fi
 
-          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          SETTINGS=$(find . extracted_source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' -print -quit)
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "Project directory: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Android project found: $PROJECT_DIR"
 
       - name: Build PLAY MAX APK
         run: |
-          gradle -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+          if [ -f "$PROJECT_DIR/gradlew" ]; then
+            chmod +x "$PROJECT_DIR/gradlew"
+            "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+          else
+            gradle -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
