@@ -1,5 +1,5 @@
 
-name: PLAY MAX Cache Safe AutoLoad Fix
+name: PLAY MAX VLC Fullscreen Scaling Fix
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -e
 
-          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_INITIAL_MOVIE_AUTOLOAD_CACHE_SAFE_BOOTSTRAP_FIX.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_VLC_FULLSCREEN_SCALING_FIX.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
             echo "ERROR: ZIP file not found!"
@@ -70,7 +70,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-CACHE-SAFE-AUTOLOAD
+          name: PLAY-MAX-VLC-FULLSCREEN-FIX
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
