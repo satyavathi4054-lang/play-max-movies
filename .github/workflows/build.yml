@@ -33,9 +33,18 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Extract PLAY MAX ZIP
+        run: |
+          unzip -o PLAY_MAX_ALL_COMPLAINTS_ALL_LOGOS_FINAL_SOURCE.zip -d .
+
+      - name: Verify Android project
+        run: |
+          ls -la PLAY_MAX_Android_Source
+          test -f PLAY_MAX_Android_Source/settings.gradle
 
       - name: Build PLAY MAX APK
         working-directory: PLAY_MAX_Android_Source
