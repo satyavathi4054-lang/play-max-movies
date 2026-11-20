@@ -1,5 +1,5 @@
 
-name: PLAY MAX Final All Three Fix Build
+name: PLAY MAX Final Build
 
 on:
   workflow_dispatch:
@@ -12,15 +12,13 @@ permissions:
   contents: read
 
 env:
-  JAVA_VERSION: '17'
-  GRADLE_VERSION: '8.13'
-  SOURCE_ZIP: 'PLAY_MAX_FINAL_ALL_THREE_FIX.zip'
+  SOURCE_ZIP: PLAY_MAX_FINAL_ICON_SPELLING_CORRECTED.zip
   ANDROID_HOME: /usr/local/lib/android/sdk
   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
 jobs:
   build:
-    name: Build PLAY MAX Final APK
+    name: Build PLAY MAX APK
     runs-on: ubuntu-latest
 
     steps:
@@ -33,19 +31,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Verify Final Source ZIP
+      - name: Verify Source ZIP
         shell: bash
         run: |
           set -e
-          test -f "$SOURCE_ZIP"
-          echo "Final source ZIP found."
+          if [ ! -f "$SOURCE_ZIP" ]; then
+            echo "ERROR: Source ZIP not found: $SOURCE_ZIP"
+            exit 1
+          fi
+          unzip -t "$SOURCE_ZIP"
 
-      - name: Extract PLAY MAX Android Source
+      - name: Extract Android Source
         shell: bash
         run: |
           set -e
@@ -58,24 +59,24 @@ jobs:
           test -f "$PROJECT_DIR/app/build.gradle"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Android project extracted successfully."
+          echo "Android project verified."
 
-      - name: Configure Android SDK
+      - name: Locate Android SDK Manager
         shell: bash
         run: |
           set -e
 
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null \
+            | sort -V | tail -n 1)
 
           if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: sdkmanager not found."
-            ls -la "$ANDROID_HOME/cmdline-tools" || true
+            echo "ERROR: Android SDK Manager not found."
             exit 1
           fi
 
           echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "Android SDK Manager found."
 
       - name: Accept Android SDK Licenses
         shell: bash
@@ -87,7 +88,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
+
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
@@ -105,7 +107,7 @@ jobs:
       - name: Upload Final APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FINAL-ALL-THREE-FIX-APK
+          name: PLAY-MAX-FINAL-APK
           path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
