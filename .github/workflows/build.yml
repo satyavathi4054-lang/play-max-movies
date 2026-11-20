@@ -40,20 +40,21 @@ jobs:
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Check Latest PLAY MAX ZIP
+      - name: Check Latest Source ZIP
         run: |
-          test -f PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip
-          unzip -t PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip
+          test -f PLAY_MAX_MOBILE_BUFFER_GOLD_APP_ICON_FIX.zip
+          unzip -t PLAY_MAX_MOBILE_BUFFER_GOLD_APP_ICON_FIX.zip
 
-      - name: Extract PLAY MAX Source
+      - name: Extract Latest PLAY MAX Source
         run: |
           rm -rf PLAY_MAX_Android_Source
-          unzip -o PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip -d .
+          unzip -o PLAY_MAX_MOBILE_BUFFER_GOLD_APP_ICON_FIX.zip -d .
 
       - name: Verify Android Project
         run: |
           test -f PLAY_MAX_Android_Source/settings.gradle
           test -f PLAY_MAX_Android_Source/app/build.gradle
+          test -f PLAY_MAX_Android_Source/app/src/main/AndroidManifest.xml
           test -f PLAY_MAX_Android_Source/app/src/main/java/com/playmax/movies/MainActivity.kt
 
       - name: Build PLAY MAX APK
