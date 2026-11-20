@@ -1,5 +1,5 @@
 
-name: PLAY MAX Firestore Migration Build
+name: PLAY MAX Final All Three Fix Build
 
 on:
   workflow_dispatch:
@@ -14,10 +14,13 @@ permissions:
 env:
   JAVA_VERSION: '17'
   GRADLE_VERSION: '8.13'
-  SOURCE_ZIP: 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip'
+  SOURCE_ZIP: 'PLAY_MAX_FINAL_ALL_THREE_FIX.zip'
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
 jobs:
   build:
+    name: Build PLAY MAX Final APK
     runs-on: ubuntu-latest
 
     steps:
@@ -35,55 +38,57 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Verify Source ZIP
+      - name: Verify Final Source ZIP
         shell: bash
         run: |
           set -e
-          if [ ! -f "$SOURCE_ZIP" ]; then
-            echo "ERROR: Source ZIP not found: $SOURCE_ZIP"
-            echo "Upload the source ZIP to the repository root."
-            exit 1
-          fi
-          echo "Source ZIP found successfully."
+          test -f "$SOURCE_ZIP"
+          echo "Final source ZIP found."
 
-      - name: Extract Android Source
+      - name: Extract PLAY MAX Android Source
         shell: bash
         run: |
           set -e
           mkdir -p android-source
-          unzip -q "$SOURCE_ZIP" -d android-source
+          unzip -oq "$SOURCE_ZIP" -d android-source
 
-          PROJECT_FILE=$(find android-source -name settings.gradle -type f | head -n 1)
+          PROJECT_DIR="android-source/PLAY_MAX_Android_Source"
 
-          if [ -z "$PROJECT_FILE" ]; then
-            echo "ERROR: settings.gradle not found."
-            exit 1
-          fi
+          test -f "$PROJECT_DIR/settings.gradle"
+          test -f "$PROJECT_DIR/app/build.gradle"
 
-          PROJECT_DIR=$(dirname "$PROJECT_FILE")
-          echo "PROJECT_DIR=$GITHUB_WORKSPACE/$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Android project extracted successfully."
 
-          echo "Android project found: $PROJECT_DIR"
-
-      - name: Setup Android SDK
+      - name: Configure Android SDK
         shell: bash
         run: |
           set -e
 
-          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          echo "Using Android SDK: $SDK_ROOT"
-
-          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" \
-            -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
 
           if [ -z "$SDKMANAGER" ]; then
             echo "ERROR: sdkmanager not found."
+            ls -la "$ANDROID_HOME/cmdline-tools" || true
             exit 1
           fi
 
-          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || true
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
 
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+      - name: Accept Android SDK Licenses
+        shell: bash
+        run: |
+          yes | "$SDKMANAGER" \
+            --sdk_root="$ANDROID_HOME" --licenses || true
+
+      - name: Install Android SDK Packages
+        shell: bash
+        run: |
+          set -e
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
+            "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
@@ -93,17 +98,15 @@ jobs:
           set -e
           cd "$PROJECT_DIR"
 
-          echo "Building PLAY MAX..."
+          gradle --no-daemon --stacktrace :app:assembleDebug
 
-          gradle --no-daemon :app:assembleDebug
+          echo "PLAY MAX APK build completed."
 
-          echo "APK build completed."
-
-      - name: Upload APK
+      - name: Upload Final APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FINAL-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          name: PLAY-MAX-FINAL-ALL-THREE-FIX-APK
+          path: android-source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
  
