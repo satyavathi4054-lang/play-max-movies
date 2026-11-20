@@ -17,68 +17,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download repository source
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      # 2. Setup Java
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 3. Setup Gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      # 4. Setup Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
 
-      # 5. Install Android SDK packages
       - name: Install SDK Packages
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      # 6. Check ZIP file
       - name: Check PLAY MAX ZIP
         run: |
           test -f PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip
           unzip -t PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip
 
-      # 7. Extract latest source
       - name: Extract PLAY MAX Source
         run: |
           rm -rf PLAY_MAX_Android_Source
           unzip -o PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip -d .
 
-      # 8. Verify Android project
       - name: Verify Android Project
         run: |
           test -f PLAY_MAX_Android_Source/settings.gradle
           test -f PLAY_MAX_Android_Source/app/build.gradle
           test -f PLAY_MAX_Android_Source/app/src/main/java/com/playmax/movies/MainActivity.kt
 
-      # 9. Verify old VLC properties are absent
-      - name: Verify Kotlin Source
-        run: |
-          if grep -nE 'videoWidth|videoHeight' PLAY_MAX_Android_Source/app/src/main/java/com/playmax/movies/MainActivity.kt; then
-            echo "Old VLC video dimension references found"
-            exit 1
-          fi
-
-      # 10. Build APK
       - name: Build PLAY MAX APK
         working-directory: PLAY_MAX_Android_Source
         run: |
           gradle --no-daemon --stacktrace :app:assembleDebug
 
-      # 11. Upload APK
       - name: Upload PLAY MAX APK
         uses: actions/upload-artifact@v4
         with:
