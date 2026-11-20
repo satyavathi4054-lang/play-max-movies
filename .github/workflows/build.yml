@@ -1,5 +1,5 @@
 
-name: PLAY MAX VLC Fullscreen Layout Sync Fix
+name: PLAY MAX Firestore Migration Build
 
 on:
   workflow_dispatch:
@@ -30,15 +30,15 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Extract PLAY MAX ZIP
+      - name: Extract PLAY MAX Firestore ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_VLC_FULLSCREEN_LAYOUT_SYNC_FIX.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP file not found!"
+            echo "ERROR: PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip not found!"
             exit 1
           fi
 
@@ -70,7 +70,8 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-VLC-LAYOUT-SYNC-FIX
+          name: PLAY-MAX-FIRESTORE-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+ 
