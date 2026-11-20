@@ -36,19 +36,19 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Install SDK Packages
+      - name: Install Android SDK Packages
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Check PLAY MAX ZIP
+      - name: Check Latest PLAY MAX ZIP
         run: |
-          test -f PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip
-          unzip -t PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip
+          test -f PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip
+          unzip -t PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip
 
       - name: Extract PLAY MAX Source
         run: |
           rm -rf PLAY_MAX_Android_Source
-          unzip -o PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE_KOTLIN_FIXED.zip -d .
+          unzip -o PLAY_MAX_WATERMARK_MOBILE_DATA_BUFFER_FIX.zip -d .
 
       - name: Verify Android Project
         run: |
