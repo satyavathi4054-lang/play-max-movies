@@ -37,14 +37,14 @@ jobs:
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Extract PLAY MAX ZIP
+      - name: Extract PLAY MAX Source
         run: |
-          unzip -o PLAY_MAX_ALL_COMPLAINTS_ALL_LOGOS_FINAL_SOURCE.zip -d .
+          unzip -o PLAY_MAX_ALL_COMPLAINTS_FINAL_SOURCE.zip -d .
 
-      - name: Verify Android project
+      - name: Verify Project
         run: |
-          ls -la PLAY_MAX_Android_Source
           test -f PLAY_MAX_Android_Source/settings.gradle
+          test -f PLAY_MAX_Android_Source/app/build.gradle
 
       - name: Build PLAY MAX APK
         working-directory: PLAY_MAX_Android_Source
