@@ -7,12 +7,14 @@ on:
     branches:
       - main
       - master
-    paths:
-      - 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip'
-      - '.github/workflows/build.yml'
 
 permissions:
   contents: read
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.13'
+  SOURCE_ZIP: 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip'
 
 jobs:
   build:
@@ -34,58 +36,73 @@ jobs:
           gradle-version: '8.13'
 
       - name: Verify Source ZIP
+        shell: bash
         run: |
-          test -f PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip
+          set -e
+          if [ ! -f "$SOURCE_ZIP" ]; then
+            echo "ERROR: Source ZIP not found: $SOURCE_ZIP"
+            echo "Upload the source ZIP to the repository root."
+            exit 1
+          fi
+          echo "Source ZIP found successfully."
 
       - name: Extract Android Source
         shell: bash
         run: |
           set -e
           mkdir -p android-source
-          unzip -oq PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip -d android-source
+          unzip -q "$SOURCE_ZIP" -d android-source
 
-          SETTINGS=$(find android-source -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -print -quit)
+          PROJECT_FILE=$(find android-source -name settings.gradle -type f | head -n 1)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle not found!"
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "ERROR: settings.gradle not found."
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$SETTINGS")
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          if [ ! -f "$PROJECT_DIR/app/build.gradle" ] && \
-             [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
-            echo "ERROR: Android app module not found!"
-            exit 1
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Android project found: $PROJECT_DIR"
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK Packages
+        shell: bash
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          set -e
+
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "Using Android SDK: $SDK_ROOT"
+
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager not found."
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || true
+
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Build PLAY MAX APK
         shell: bash
         run: |
           set -e
-          if [ -f "$PROJECT_DIR/gradlew" ]; then
-            chmod +x "$PROJECT_DIR/gradlew"
-            "$PROJECT_DIR/gradlew" --no-daemon :app:assembleDebug
-          else
-            gradle --no-daemon :app:assembleDebug
-          fi
-        working-directory: .
+          cd "$PROJECT_DIR"
+
+          echo "Building PLAY MAX..."
+
+          gradle --no-daemon :app:assembleDebug
+
+          echo "APK build completed."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FINAL-COMPLAINTS-FIXED-APK
+          name: PLAY-MAX-FINAL-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
