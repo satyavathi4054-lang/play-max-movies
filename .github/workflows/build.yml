@@ -7,6 +7,9 @@ on:
     branches:
       - main
       - master
+    paths:
+      - 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip'
+      - '.github/workflows/build.yml'
 
 permissions:
   contents: read
@@ -30,22 +33,20 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Extract PLAY MAX Firestore ZIP
+      - name: Verify Source ZIP
+        run: |
+          test -f PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip
+
+      - name: Extract Android Source
         shell: bash
         run: |
           set -e
+          mkdir -p android-source
+          unzip -oq PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip -d android-source
 
-          ZIP_FILE=$(find . -maxdepth 2 -type f -name 'PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip' -print -quit)
-
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: PLAY_MAX_FIRESTORE_MIGRATION_SOURCE.zip not found!"
-            exit 1
-          fi
-
-          mkdir -p source
-          unzip -q "$ZIP_FILE" -d source
-
-          SETTINGS=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          SETTINGS=$(find android-source -type f \
+            \( -name settings.gradle -o -name settings.gradle.kts \) \
+            -print -quit)
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: settings.gradle not found!"
@@ -53,24 +54,38 @@ jobs:
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
+
+          if [ ! -f "$PROJECT_DIR/app/build.gradle" ] && \
+             [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
+            echo "ERROR: Android app module not found!"
+            exit 1
+          fi
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build PLAY MAX APK
         shell: bash
         run: |
           set -e
-
           if [ -f "$PROJECT_DIR/gradlew" ]; then
             chmod +x "$PROJECT_DIR/gradlew"
-            "$PROJECT_DIR/gradlew" -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+            "$PROJECT_DIR/gradlew" --no-daemon :app:assembleDebug
           else
-            gradle -p "$PROJECT_DIR" --no-daemon :app:assembleDebug
+            gradle --no-daemon :app:assembleDebug
           fi
+        working-directory: .
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FIRESTORE-APK
+          name: PLAY-MAX-FINAL-COMPLAINTS-FIXED-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
