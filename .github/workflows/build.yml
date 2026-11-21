@@ -1,4 +1,4 @@
- 
+
 name: PLAY MAX APK Build
 
 on:
@@ -34,32 +34,34 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Extract PLAY MAX Source ZIP
+      - name: Extract Latest PLAY MAX ZIP
         run: |
-          ZIP_FILE="PLAY_MAX_BOTTOM_NAV_TELEGRAM_POSITION_FIXED.zip"
+          ZIP_FILE="PLAY_MAX_BOTTOM_NAV_TELEGRAM_GAP_FIXED.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "Source ZIP not found!"
+            echo "ERROR: ZIP file not found in repository root."
             exit 1
           fi
 
           mkdir -p extracted
           unzip -o "$ZIP_FILE" -d extracted
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           PROJECT_DIR=$(find extracted -name settings.gradle -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project not found!"
+            echo "ERROR: settings.gradle not found."
             exit 1
           fi
 
+          echo "Building project: $PROJECT_DIR"
           gradle -p "$PROJECT_DIR" assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-FINAL-APK
-          path: extracted/**/app/build/outputs/apk/debug/*.apk
+          path: extracted/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+ 
