@@ -5,9 +5,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main, master]
-    paths:
-      - 'PLAY_MAX_USER_APP_BANNER_SLIDER_TELEGRAM_FIXED.zip'
-      - '.github/workflows/android-build.yml'
 
 permissions:
   contents: read
@@ -17,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,35 +26,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK packages
+      - name: Build APK
         run: |
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
+          cd PLAY_MAX_Android_Source
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
-
-      - name: Extract User App Source
-        run: |
-          unzip -oq PLAY_MAX_USER_APP_BANNER_SLIDER_TELEGRAM_FIXED.zip -d .
-          test -f PLAY_MAX_Android_Source/settings.gradle
-          test -f PLAY_MAX_Android_Source/app/build.gradle
-          test -f PLAY_MAX_Android_Source/app/src/main/assets/index.html
-
-      - name: Build User App APK
-        run: |
-          gradle --no-daemon --stacktrace assembleDebug
-        working-directory: PLAY_MAX_Android_Source
-
-      - name: Upload User APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
-          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
+          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
  
