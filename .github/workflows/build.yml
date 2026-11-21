@@ -20,7 +20,7 @@ jobs:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
-      - name: Checkout Source
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -34,61 +34,68 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK
+      - name: Install Android SDK Packages
+        shell: bash
         run: |
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: SDK Manager not found"
+            exit 1
+          fi
+
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
+
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Find Android Project
+      - name: Extract PLAY MAX Source ZIP
         shell: bash
         run: |
-          echo "Repository files:"
-          find . -maxdepth 5 -type f \( \
-            -name settings.gradle -o \
-            -name settings.gradle.kts -o \
-            -name build.gradle -o \
-            -name build.gradle.kts \
-          \) | sort
+          ZIP_FILE="PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip"
 
-          PROJECT_DIR=""
-
-          while IFS= read -r FILE; do
-            DIR=$(dirname "$FILE")
-
-            if [ -f "$DIR/app/build.gradle" ] || \
-               [ -f "$DIR/app/build.gradle.kts" ]; then
-              PROJECT_DIR="$DIR"
-              break
-            fi
-          done < <(find . -type f \( \
-            -name settings.gradle -o \
-            -name settings.gradle.kts \
-          \) -not -path '*/.gradle/*')
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android project structure not found."
-            echo "Please check repository folder structure."
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: Source ZIP not found in repository root"
             exit 1
           fi
 
-          echo "Android project found: $PROJECT_DIR"
+          mkdir -p extracted_source
+          unzip -q "$ZIP_FILE" -d extracted_source
+
+          echo "ZIP extracted successfully"
+
+      - name: Verify User App Project
+        shell: bash
+        run: |
+          PROJECT_DIR="$GITHUB_WORKSPACE/extracted_source/PLAY_MAX_Android_Source"
+
+          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
+            echo "ERROR: settings.gradle missing"
+            exit 1
+          fi
+
+          if [ ! -f "$PROJECT_DIR/app/build.gradle" ]; then
+            echo "ERROR: User App build.gradle missing"
+            exit 1
+          fi
+
+          echo "PLAY MAX USER APP PROJECT VERIFIED"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Build PLAY MAX User APK
+        shell: bash
         run: |
           gradle --no-daemon --stacktrace \
             -p "$PROJECT_DIR" \
             assembleDebug
 
-      - name: Upload APK
+      - name: Upload PLAY MAX APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          path: extracted_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
  
