@@ -34,60 +34,57 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK Packages
-        shell: bash
+      - name: Install Android SDK
         run: |
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: Android SDK manager not found"
-            exit 1
-          fi
-
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
-
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Find PLAY MAX User Project
+      - name: Find Android Project
         shell: bash
         run: |
+          echo "Repository files:"
+          find . -maxdepth 5 -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts -o \
+            -name build.gradle -o \
+            -name build.gradle.kts \
+          \) | sort
+
           PROJECT_DIR=""
 
           while IFS= read -r FILE; do
             DIR=$(dirname "$FILE")
 
-            if [ -f "$DIR/app/build.gradle" ] && \
-               grep -q "com.playmax.movies" "$DIR/app/build.gradle"; then
+            if [ -f "$DIR/app/build.gradle" ] || \
+               [ -f "$DIR/app/build.gradle.kts" ]; then
               PROJECT_DIR="$DIR"
               break
             fi
-
-            if [ -f "$DIR/app/build.gradle.kts" ] && \
-               grep -q "com.playmax.movies" "$DIR/app/build.gradle.kts"; then
-              PROJECT_DIR="$DIR"
-              break
-            fi
-          done < <(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.gradle/*')
+          done < <(find . -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts \
+          \) -not -path '*/.gradle/*')
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: PLAY MAX User App project not found!"
+            echo "ERROR: Android project structure not found."
+            echo "Please check repository folder structure."
             exit 1
           fi
 
-          echo "Found project: $PROJECT_DIR"
+          echo "Android project found: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build PLAY MAX User APK
-        shell: bash
+      - name: Build APK
         run: |
           gradle --no-daemon --stacktrace \
             -p "$PROJECT_DIR" \
             assembleDebug
 
-      - name: Upload PLAY MAX APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
