@@ -1,5 +1,5 @@
 
-name: PLAY MAX Android APK Build
+name: Build PLAY MAX Apps
 
 on:
   workflow_dispatch:
@@ -13,11 +13,10 @@ permissions:
 
 jobs:
   build:
-    name: Build PLAY MAX APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -33,41 +32,44 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools'
 
-      - name: Install Android SDK Packages
+      - name: Install Android SDK packages
         run: |
-          sdkmanager "platforms;android-36" \
-                     "build-tools;36.0.0"
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "platforms;android-36" \
+            "build-tools;35.0.0" \
+            "build-tools;36.0.0"
 
-      - name: Verify Source ZIP
-        run: |
-          test -f PLAY_MAX_FINAL_PLAYMAX_CIRCULAR_ICON_INTEGRATED.zip
-          unzip -t PLAY_MAX_FINAL_PLAYMAX_CIRCULAR_ICON_INTEGRATED.zip
-
-      - name: Extract PLAY MAX Source
-        run: |
-          unzip -o PLAY_MAX_FINAL_PLAYMAX_CIRCULAR_ICON_INTEGRATED.zip -d .
-
-      - name: Verify Android Project
+      - name: Verify project files
         run: |
           test -f PLAY_MAX_Android_Source/settings.gradle
-          test -f PLAY_MAX_Android_Source/build.gradle
           test -f PLAY_MAX_Android_Source/app/build.gradle
-          test -f PLAY_MAX_Android_Source/app/src/main/AndroidManifest.xml
-          test -f PLAY_MAX_Android_Source/app/src/main/java/com/playmax/movies/MainActivity.kt
+          test -f PLAY_MAX_ANDROID_APP/settings.gradle
+          test -f PLAY_MAX_ANDROID_APP/app/build.gradle
 
-      - name: Build PLAY MAX APK
+      - name: Build PLAY MAX Main APK
         working-directory: PLAY_MAX_Android_Source
-        run: |
-          gradle --no-daemon --stacktrace :app:assembleDebug
+        run: gradle --no-daemon --stacktrace assembleDebug
 
-      - name: Upload PLAY MAX APK
+      - name: Build PLAY MAX Admin APK
+        working-directory: PLAY_MAX_ANDROID_APP
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Upload Main APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FINAL-APK
+          name: PLAY-MAX-MAIN-APK
           path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PLAY-MAX-ADMIN-APK
+          path: PLAY_MAX_ANDROID_APP/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
  
