@@ -1,11 +1,13 @@
 
-name: Build PLAY MAX Main and Admin APKs
+name: Build PLAY MAX User APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main, master]
+    paths:
+      - 'PLAY_MAX_USER_APP_BANNER_SLIDER_TELEGRAM_FIXED.zip'
+      - '.github/workflows/android-build.yml'
 
 permissions:
   contents: read
@@ -15,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -24,59 +26,38 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle 8.13
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Install Android SDK
+      - name: Extract User App Source
         run: |
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-35" \
-            "platforms;android-36" \
-            "build-tools;35.0.0" \
-            "build-tools;36.0.0"
+          unzip -oq PLAY_MAX_USER_APP_BANNER_SLIDER_TELEGRAM_FIXED.zip -d .
+          test -f PLAY_MAX_Android_Source/settings.gradle
+          test -f PLAY_MAX_Android_Source/app/build.gradle
+          test -f PLAY_MAX_Android_Source/app/src/main/assets/index.html
 
-      - name: Extract PLAY MAX Source ZIP
+      - name: Build User App APK
         run: |
-          test -f PLAY_MAX_THREE_COMPLAINTS_SOURCE_FIXED.zip
-          mkdir -p source
-          unzip -q PLAY_MAX_THREE_COMPLAINTS_SOURCE_FIXED.zip -d source
+          gradle --no-daemon --stacktrace assembleDebug
+        working-directory: PLAY_MAX_Android_Source
 
-      - name: Verify Projects
-        run: |
-          test -f source/PLAY_MAX_Android_Source/settings.gradle
-          test -f source/PLAY_MAX_Android_Source/app/build.gradle
-          test -f source/PLAY_MAX_ANDROID_APP/settings.gradle
-          test -f source/PLAY_MAX_ANDROID_APP/app/build.gradle
-
-          echo "Main and Admin projects verified."
-
-      - name: Build Main App
-        run: |
-          gradle --no-daemon --stacktrace \
-            -p source/PLAY_MAX_Android_Source assembleDebug
-
-      - name: Build Admin App
-        run: |
-          gradle --no-daemon --stacktrace \
-            -p source/PLAY_MAX_ANDROID_APP assembleDebug
-
-      - name: Upload Main APK
+      - name: Upload User APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-MAIN-APK
-          path: source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
+          name: PLAY-MAX-USER-APK
+          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-
-      - name: Upload Admin APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: PLAY-MAX-ADMIN-APK
-          path: source/PLAY_MAX_ANDROID_APP/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          retention-days: 14
  
