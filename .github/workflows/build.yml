@@ -15,10 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -34,82 +30,47 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Find Latest User ZIP
         shell: bash
         run: |
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "ERROR: SDK Manager not found"
-            exit 1
-          fi
-
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
-
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Select Latest PLAY MAX Source ZIP
-        shell: bash
-        run: |
-          ZIP_FILE="PLAY_MAX_CONTINUE_WATCHING_FIXED.zip"
+          ZIP_FILE="PLAY_MAX_USER_ADMOB_FIREBASE_INTEGRATION.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Latest Continue Watching ZIP not found!"
+            echo "ERROR: User App ZIP not found"
             exit 1
           fi
 
-          echo "Using latest source: $ZIP_FILE"
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
-      - name: Extract Android Source
-        shell: bash
+      - name: Extract User Source
         run: |
-          mkdir -p extracted_source
-          unzip -q "$ZIP_FILE" -d extracted_source
-          echo "Source ZIP extracted successfully"
+          mkdir -p extracted_user
+          unzip -q "$ZIP_FILE" -d extracted_user
 
-      - name: Find Android Project
-        shell: bash
+      - name: Verify Android Project
         run: |
-          PROJECT_DIR=""
+          PROJECT_DIR="extracted_user/PLAY_MAX_Android_Source"
 
-          while IFS= read -r FILE; do
-            DIR=$(dirname "$FILE")
+          test -f "$PROJECT_DIR/settings.gradle"
+          test -f "$PROJECT_DIR/app/build.gradle"
+          test -f "$PROJECT_DIR/app/google-services.json"
 
-            if [ -f "$DIR/app/build.gradle" ] || \
-               [ -f "$DIR/app/build.gradle.kts" ]; then
-              PROJECT_DIR="$DIR"
-              break
-            fi
-          done < <(find extracted_source -type f \( \
-            -name settings.gradle -o \
-            -name settings.gradle.kts \
-          \))
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android project not found!"
-            find extracted_source -maxdepth 5 -type f
-            exit 1
-          fi
-
-          echo "Project found: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build PLAY MAX APK
-        shell: bash
+      - name: Build PLAY MAX User APK
         run: |
           gradle --no-daemon --stacktrace \
             -p "$PROJECT_DIR" \
             assembleDebug
 
-      - name: Upload PLAY MAX APK
+      - name: Upload PLAY MAX User APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-USER-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          name: PLAY-MAX-USER-ADMOB-APK
+          path: extracted_user/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
  
