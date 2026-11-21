@@ -51,22 +51,17 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Find Latest PLAY MAX ZIP
+      - name: Select Latest PLAY MAX Source ZIP
         shell: bash
         run: |
-          ZIP_FILE=""
+          ZIP_FILE="PLAY_MAX_CONTINUE_WATCHING_FIXED.zip"
 
-          if [ -f "PLAY_MAX_BANNER_TAP_STARTUP_DELAY_FIXED.zip" ]; then
-            ZIP_FILE="PLAY_MAX_BANNER_TAP_STARTUP_DELAY_FIXED.zip"
-          elif [ -f "PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip" ]; then
-            ZIP_FILE="PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip"
-          else
-            echo "ERROR: PLAY MAX Source ZIP not found"
-            find . -maxdepth 3 -type f -name "*.zip"
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: Latest Continue Watching ZIP not found!"
             exit 1
           fi
 
-          echo "Using ZIP: $ZIP_FILE"
+          echo "Using latest source: $ZIP_FILE"
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract Android Source
@@ -74,8 +69,7 @@ jobs:
         run: |
           mkdir -p extracted_source
           unzip -q "$ZIP_FILE" -d extracted_source
-
-          echo "Source extracted successfully"
+          echo "Source ZIP extracted successfully"
 
       - name: Find Android Project
         shell: bash
@@ -96,7 +90,7 @@ jobs:
           \))
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android project not found"
+            echo "ERROR: Android project not found!"
             find extracted_source -maxdepth 5 -type f
             exit 1
           fi
