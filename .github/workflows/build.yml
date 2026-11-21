@@ -1,12 +1,11 @@
 
-name: Build PLAY MAX Apps
+name: Build PLAY MAX Main APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - master
 
 permissions:
   contents: read
@@ -19,7 +18,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -33,7 +32,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK
+      - name: Install SDK
         run: |
           sdkmanager --install \
             "platform-tools" \
@@ -42,60 +41,53 @@ jobs:
             "build-tools;35.0.0" \
             "build-tools;36.0.0"
 
-      - name: Locate Android Projects
-        id: locate
-        shell: bash
+      - name: Extract Main App ZIP
         run: |
-          MAIN=""
-          ADMIN=""
+          mkdir -p extracted
+          unzip -q PLAY_MAX_Android_Source_READY_FOR_BUILD.zip -d extracted
 
-          while IFS= read -r file; do
-            if grep -q "com.playmax.movies" "$file"; then
-              MAIN="$(dirname "$(dirname "$file")")"
-            fi
+      - name: Find Android Project
+        id: project
+        run: |
+          SETTINGS=$(find extracted -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts \
+            \) | head -n 1)
 
-            if grep -q "com.playmax.admin" "$file"; then
-              ADMIN="$(dirname "$(dirname "$file")")"
-            fi
-          done < <(find . -type f -path '*/app/build.gradle')
+          if [ -z "$SETTINGS" ]; then
+            echo "Android settings.gradle not found"
+            find extracted -maxdepth 4 -type f
+            exit 1
+          fi
 
-          echo "Main project: $MAIN"
-          echo "Admin project: $ADMIN"
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Found project: $PROJECT_DIR"
 
-          test -n "$MAIN" || {
-            echo "Main App project not found"
+      - name: Build Main APK
+        run: |
+          gradle --no-daemon --stacktrace \
+            -p "${{ steps.project.outputs.project_dir }}" \
+            assembleDebug
+
+      - name: Find APK
+        id: apk
+        run: |
+          APK=$(find "${{ steps.project.outputs.project_dir }}" \
+            -type f -path '*/build/outputs/apk/*/*.apk' | head -n 1)
+
+          test -n "$APK" || {
+            echo "APK not generated"
             exit 1
           }
 
-          test -n "$ADMIN" || {
-            echo "Admin App project not found"
-            exit 1
-          }
-
-          echo "main_dir=$MAIN" >> "$GITHUB_OUTPUT"
-          echo "admin_dir=$ADMIN" >> "$GITHUB_OUTPUT"
-
-      - name: Build PLAY MAX Main APK
-        run: |
-          gradle --no-daemon --stacktrace \
-            -p "${{ steps.locate.outputs.main_dir }}" assembleDebug
-
-      - name: Build PLAY MAX Admin APK
-        run: |
-          gradle --no-daemon --stacktrace \
-            -p "${{ steps.locate.outputs.admin_dir }}" assembleDebug
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
 
       - name: Upload Main APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-MAIN-APK
-          path: ${{ steps.locate.outputs.main_dir }}/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.apk.outputs.apk_path }}
           if-no-files-found: error
-
-      - name: Upload Admin APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: PLAY-MAX-ADMIN-APK
-          path: ${{ steps.locate.outputs.admin_dir }}/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          retention-days: 14
  
