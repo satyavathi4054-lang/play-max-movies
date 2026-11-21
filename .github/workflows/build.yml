@@ -34,7 +34,7 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK Packages
+      - name: Install Android SDK
         shell: bash
         run: |
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
@@ -51,40 +51,60 @@ jobs:
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Extract PLAY MAX Source ZIP
+      - name: Find Latest PLAY MAX ZIP
         shell: bash
         run: |
-          ZIP_FILE="PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip"
+          ZIP_FILE=""
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Source ZIP not found in repository root"
+          if [ -f "PLAY_MAX_BANNER_TAP_STARTUP_DELAY_FIXED.zip" ]; then
+            ZIP_FILE="PLAY_MAX_BANNER_TAP_STARTUP_DELAY_FIXED.zip"
+          elif [ -f "PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip" ]; then
+            ZIP_FILE="PLAY_MAX_USER_APP_BANNER_POSITION_REFRESH_FIXED.zip"
+          else
+            echo "ERROR: PLAY MAX Source ZIP not found"
+            find . -maxdepth 3 -type f -name "*.zip"
             exit 1
           fi
 
+          echo "Using ZIP: $ZIP_FILE"
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+
+      - name: Extract Android Source
+        shell: bash
+        run: |
           mkdir -p extracted_source
           unzip -q "$ZIP_FILE" -d extracted_source
 
-          echo "ZIP extracted successfully"
+          echo "Source extracted successfully"
 
-      - name: Verify User App Project
+      - name: Find Android Project
         shell: bash
         run: |
-          PROJECT_DIR="$GITHUB_WORKSPACE/extracted_source/PLAY_MAX_Android_Source"
+          PROJECT_DIR=""
 
-          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
-            echo "ERROR: settings.gradle missing"
+          while IFS= read -r FILE; do
+            DIR=$(dirname "$FILE")
+
+            if [ -f "$DIR/app/build.gradle" ] || \
+               [ -f "$DIR/app/build.gradle.kts" ]; then
+              PROJECT_DIR="$DIR"
+              break
+            fi
+          done < <(find extracted_source -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts \
+          \))
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Android project not found"
+            find extracted_source -maxdepth 5 -type f
             exit 1
           fi
 
-          if [ ! -f "$PROJECT_DIR/app/build.gradle" ]; then
-            echo "ERROR: User App build.gradle missing"
-            exit 1
-          fi
-
-          echo "PLAY MAX USER APP PROJECT VERIFIED"
+          echo "Project found: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build PLAY MAX User APK
+      - name: Build PLAY MAX APK
         shell: bash
         run: |
           gradle --no-daemon --stacktrace \
@@ -95,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
-          path: extracted_source/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
  
