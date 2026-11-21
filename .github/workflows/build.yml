@@ -4,10 +4,8 @@ name: Build PLAY MAX User APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
-
-permissions:
-  contents: read
+    branches:
+      - main
 
 jobs:
   build:
@@ -23,19 +21,33 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
+
+      - name: Find Android Project
+        shell: bash
+        run: |
+          PROJECT_DIR=$(find . -type f \( -name settings.gradle -o -name settings.gradle.kts \) -not -path '*/.gradle/*' | head -n 1 | xargs dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found!"
+            exit 1
+          fi
+          echo "Project folder: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Build APK
         run: |
-          cd PLAY_MAX_Android_Source
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-USER-APK
-          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          name: PLAY-MAX-User-APK
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
  
