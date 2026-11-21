@@ -33,7 +33,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: |
           sdkmanager --install \
             "platform-tools" \
@@ -42,34 +42,60 @@ jobs:
             "build-tools;35.0.0" \
             "build-tools;36.0.0"
 
-      - name: Verify project files
+      - name: Locate Android Projects
+        id: locate
+        shell: bash
         run: |
-          test -f PLAY_MAX_Android_Source/settings.gradle
-          test -f PLAY_MAX_Android_Source/app/build.gradle
-          test -f PLAY_MAX_ANDROID_APP/settings.gradle
-          test -f PLAY_MAX_ANDROID_APP/app/build.gradle
+          MAIN=""
+          ADMIN=""
+
+          while IFS= read -r file; do
+            if grep -q "com.playmax.movies" "$file"; then
+              MAIN="$(dirname "$(dirname "$file")")"
+            fi
+
+            if grep -q "com.playmax.admin" "$file"; then
+              ADMIN="$(dirname "$(dirname "$file")")"
+            fi
+          done < <(find . -type f -path '*/app/build.gradle')
+
+          echo "Main project: $MAIN"
+          echo "Admin project: $ADMIN"
+
+          test -n "$MAIN" || {
+            echo "Main App project not found"
+            exit 1
+          }
+
+          test -n "$ADMIN" || {
+            echo "Admin App project not found"
+            exit 1
+          }
+
+          echo "main_dir=$MAIN" >> "$GITHUB_OUTPUT"
+          echo "admin_dir=$ADMIN" >> "$GITHUB_OUTPUT"
 
       - name: Build PLAY MAX Main APK
-        working-directory: PLAY_MAX_Android_Source
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: |
+          gradle --no-daemon --stacktrace \
+            -p "${{ steps.locate.outputs.main_dir }}" assembleDebug
 
       - name: Build PLAY MAX Admin APK
-        working-directory: PLAY_MAX_ANDROID_APP
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: |
+          gradle --no-daemon --stacktrace \
+            -p "${{ steps.locate.outputs.admin_dir }}" assembleDebug
 
       - name: Upload Main APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-MAIN-APK
-          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.locate.outputs.main_dir }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
 
       - name: Upload Admin APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-ADMIN-APK
-          path: PLAY_MAX_ANDROID_APP/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.locate.outputs.admin_dir }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
  
