@@ -1,5 +1,5 @@
  
-name: PLAY MAX APK Build
+name: PLAY MAX FULLSCREEN FIX APK
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build PLAY MAX APK
+    name: PLAY MAX Fullscreen APK Build
     runs-on: ubuntu-latest
 
     steps:
@@ -25,49 +25,50 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK Packages
+      - name: Accept Android SDK Licenses
         shell: bash
         run: |
-          set -e
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager | head -n 1)
 
           if [ -z "$SDKMANAGER" ]; then
-            echo "Android SDK Manager not found!"
+            echo "SDK Manager not found"
             exit 1
           fi
 
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
+
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager | head -n 1)
 
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
-      - name: Extract PLAY MAX Source
+      - name: Extract Fullscreen Fix Source
         shell: bash
         run: |
           set -e
 
-          PROJECT_DIR=$(find . -type f -name settings.gradle \
-            -not -path './.git/*' -printf '%h\n' | head -n 1)
+          ZIP_FILE=$(find . -type f \
+            -name 'PLAY_MAX_FULLSCREEN_BOTTOM_GAP_FIXED_SOURCE.zip' \
+            -not -path './.git/*' | head -n 1)
 
-          if [ -z "$PROJECT_DIR" ]; then
-            ZIP_FILE=$(find . -type f -iname 'PLAY_MAX*.zip' \
-              -not -path './.git/*' | head -n 1)
-
-            if [ -z "$ZIP_FILE" ]; then
-              echo "PLAY MAX ZIP not found!"
-              exit 1
-            fi
-
-            mkdir -p "$RUNNER_TEMP/playmax"
-            unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax"
-
-            PROJECT_DIR=$(find "$RUNNER_TEMP/playmax" \
-              -type f -name settings.gradle \
-              -printf '%h\n' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Fullscreen Fix ZIP not found!"
+            exit 1
           fi
+
+          mkdir -p "$RUNNER_TEMP/playmax"
+
+          unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax"
+
+          PROJECT_DIR=$(find "$RUNNER_TEMP/playmax" \
+            -type f -name settings.gradle \
+            -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
             echo "Android project not found!"
@@ -75,32 +76,31 @@ jobs:
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Project found: $PROJECT_DIR"
+
+          echo "Fullscreen source selected: $PROJECT_DIR"
 
       - name: Setup Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Build PLAY MAX APK
+      - name: Build Fullscreen Fix APK
         run: |
-          gradle -p "$PROJECT_DIR" :app:assembleDebug --no-daemon
+          gradle -p "$PROJECT_DIR" \
+            :app:assembleDebug \
+            --no-daemon
 
       - name: Verify APK
         run: |
           APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
-          if [ ! -f "$APK" ]; then
-            echo "APK not generated!"
-            exit 1
-          fi
-
+          test -f "$APK"
           ls -lh "$APK"
 
-      - name: Upload PLAY MAX APK
+      - name: Upload Fullscreen Fix APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-APK
+          name: PLAY-MAX-FULLSCREEN-FIX-APK
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
