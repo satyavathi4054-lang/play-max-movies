@@ -1,5 +1,5 @@
  
-name: PLAY MAX User App APK Build
+name: PLAY MAX User App Final Build
 
 on:
   workflow_dispatch:
@@ -21,20 +21,23 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Extract User App Source
+      - name: Extract User App ZIP
         run: |
-          unzip -oq PLAY_MAX_USER_APP_ONLY_DOWNLOAD_LOADING_LOGO.zip -d .
+          unzip -oq PLAY_MAX_USER_APP_POSTER_LABEL_LOADING_LOGO_FIXED.zip -d .
 
-      - name: Build User APK
+      - name: Build PLAY MAX APK
         run: |
           gradle --no-daemon -p PLAY_MAX_Android_Source :app:assembleDebug
 
-      - name: Upload User APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
