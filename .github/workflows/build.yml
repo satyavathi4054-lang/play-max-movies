@@ -25,11 +25,16 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+
+      - name: Accept Android Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK Packages
+        run: |
+          sdkmanager --install "platform-tools"
+          sdkmanager --install "platforms;android-36"
+          sdkmanager --install "build-tools;36.0.0"
 
       - name: Extract PLAY MAX Source
         run: |
