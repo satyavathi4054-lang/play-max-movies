@@ -25,36 +25,46 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 36
+      - name: Install Android SDK Packages
+        shell: bash
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          set -e
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
 
-      - name: Find and Extract PLAY MAX Source
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android SDK Manager not found!"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses
+
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Extract PLAY MAX Source
         shell: bash
         run: |
           set -e
 
           PROJECT_DIR=$(find . -type f -name settings.gradle \
-            -not -path './.git/*' \
-            -printf '%h\n' | head -n 1)
+            -not -path './.git/*' -printf '%h\n' | head -n 1)
 
           if [ -z "$PROJECT_DIR" ]; then
             ZIP_FILE=$(find . -type f -iname 'PLAY_MAX*.zip' \
               -not -path './.git/*' | head -n 1)
 
             if [ -z "$ZIP_FILE" ]; then
-              echo "PLAY MAX Source ZIP not found!"
+              echo "PLAY MAX ZIP not found!"
               exit 1
             fi
 
-            mkdir -p "$RUNNER_TEMP/playmax_source"
-            unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax_source"
+            mkdir -p "$RUNNER_TEMP/playmax"
+            unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax"
 
-            PROJECT_DIR=$(find "$RUNNER_TEMP/playmax_source" \
+            PROJECT_DIR=$(find "$RUNNER_TEMP/playmax" \
               -type f -name settings.gradle \
               -printf '%h\n' | head -n 1)
           fi
@@ -65,25 +75,23 @@ jobs:
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Found project: $PROJECT_DIR"
+          echo "Project found: $PROJECT_DIR"
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Build PLAY MAX Debug APK
+      - name: Build PLAY MAX APK
         run: |
-          gradle -p "$PROJECT_DIR" \
-            :app:assembleDebug \
-            --no-daemon
+          gradle -p "$PROJECT_DIR" :app:assembleDebug --no-daemon
 
       - name: Verify APK
         run: |
           APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "APK file not generated!"
+            echo "APK not generated!"
             exit 1
           fi
 
