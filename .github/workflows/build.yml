@@ -38,7 +38,7 @@ jobs:
 
       - name: Extract PLAY MAX Source
         run: |
-          unzip -q PLAY_MAX_USER_APP_IMMEDIATE_POSTER_LOADING_SOURCE.zip -d extracted
+          unzip -q PLAY_MAX_USER_APP_POSTER_LOADING_LAYOUT_FIXED_SOURCE.zip -d extracted
 
       - name: Build APK
         run: |
