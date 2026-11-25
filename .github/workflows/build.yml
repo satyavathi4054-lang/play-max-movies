@@ -1,4 +1,4 @@
-
+ 
 name: PLAY MAX APK Build
 
 on:
@@ -7,8 +7,12 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Build PLAY MAX APK
     runs-on: ubuntu-latest
 
     steps:
@@ -21,47 +25,74 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Find and Extract PLAY MAX Source
+        shell: bash
+        run: |
+          set -e
+
+          PROJECT_DIR=$(find . -type f -name settings.gradle \
+            -not -path './.git/*' \
+            -printf '%h\n' | head -n 1)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            ZIP_FILE=$(find . -type f -iname 'PLAY_MAX*.zip' \
+              -not -path './.git/*' | head -n 1)
+
+            if [ -z "$ZIP_FILE" ]; then
+              echo "PLAY MAX Source ZIP not found!"
+              exit 1
+            fi
+
+            mkdir -p "$RUNNER_TEMP/playmax_source"
+            unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax_source"
+
+            PROJECT_DIR=$(find "$RUNNER_TEMP/playmax_source" \
+              -type f -name settings.gradle \
+              -printf '%h\n' | head -n 1)
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Android project not found!"
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Found project: $PROJECT_DIR"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Install Android SDK
+      - name: Build PLAY MAX Debug APK
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
+          gradle -p "$PROJECT_DIR" \
+            :app:assembleDebug \
+            --no-daemon
 
-      - name: Extract PLAY MAX Source ZIP
+      - name: Verify APK
         run: |
-          ZIP_FILE="PLAY_MAX_AUDIO_TRACKS_PLAYMAX_BRANDING_FIXED.zip"
+          APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: Source ZIP not found!"
+          if [ ! -f "$APK" ]; then
+            echo "APK file not generated!"
             exit 1
           fi
 
-          mkdir -p extracted
-          unzip -o "$ZIP_FILE" -d extracted
+          ls -lh "$APK"
 
-      - name: Build APK
-        run: |
-          PROJECT_DIR=$(find extracted -name settings.gradle -printf '%h\n' | head -n 1)
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android project not found!"
-            exit 1
-          fi
-
-          echo "Building: $PROJECT_DIR"
-          gradle -p "$PROJECT_DIR" assembleDebug
-
-      - name: Upload APK
+      - name: Upload PLAY MAX APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-AUDIO-BRANDING-APK
-          path: extracted/**/app/build/outputs/apk/debug/*.apk
+          name: PLAY-MAX-APK
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
- 
+          retention-days: 7
