@@ -1,18 +1,15 @@
  
-name: PLAY MAX FULLSCREEN FIX V2 APK
+name: PLAY MAX APK Build
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-
-permissions:
-  contents: read
+    paths:
+      - 'PLAY_MAX_FULLSCREEN_BOTTOM_GAP_FIXED_V2_SOURCE.zip'
+      - '.github/workflows/build.yml'
 
 jobs:
   build:
-    name: PLAY MAX Fullscreen V2 Build
     runs-on: ubuntu-latest
 
     steps:
@@ -25,91 +22,29 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Accept Android SDK Licenses
-        shell: bash
-        run: |
-          set -e
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -name sdkmanager | head -n 1)
-
-          if [ -z "$SDKMANAGER" ]; then
-            echo "SDK Manager not found!"
-            exit 1
-          fi
-
-          set +o pipefail
-          yes | "$SDKMANAGER" \
-            --sdk_root="$ANDROID_HOME" --licenses
-          set -o pipefail
-
-      - name: Install Android SDK
-        shell: bash
-        run: |
-          set -e
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -name sdkmanager | head -n 1)
-
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Extract Fullscreen V2 Source
-        shell: bash
-        run: |
-          set -e
-
-          ZIP_FILE="./PLAY_MAX_FULLSCREEN_BOTTOM_GAP_FIXED_V2_SOURCE.zip"
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "Fullscreen V2 ZIP not found!"
-            exit 1
-          fi
-
-          mkdir -p "$RUNNER_TEMP/playmax"
-
-          unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/playmax"
-
-          PROJECT_DIR="$RUNNER_TEMP/playmax/PLAY_MAX_Android_Source"
-
-          if [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
-            echo "Android project not found!"
-            exit 1
-          fi
-
-          if [ ! -f "$PROJECT_DIR/app/google-services.json" ]; then
-            echo "Firebase configuration missing!"
-            exit 1
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Setup Gradle 8.13
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '8.13.2'
 
-      - name: Build PLAY MAX V2 APK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
         run: |
-          gradle -p "$PROJECT_DIR" \
-            :app:assembleDebug \
-            --no-daemon
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Verify APK
+      - name: Extract PLAY MAX Source
         run: |
-          APK="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+          unzip -q PLAY_MAX_FULLSCREEN_BOTTOM_GAP_FIXED_V2_SOURCE.zip -d extracted
 
-          if [ ! -f "$APK" ]; then
-            echo "APK not generated!"
-            exit 1
-          fi
+      - name: Build APK
+        run: |
+          gradle -p extracted/PLAY_MAX_Android_Source :app:assembleDebug --no-daemon
 
-          ls -lh "$APK"
-
-      - name: Upload PLAY MAX V2 APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-FULLSCREEN-FIX-V2-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          name: PLAY-MAX-APK
+          path: extracted/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 7
