@@ -3,10 +3,6 @@ name: PLAY MAX APK Build
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'PLAY_MAX_FULLSCREEN_BOTTOM_GAP_FIXED_V2_SOURCE.zip'
-      - '.github/workflows/build.yml'
 
 jobs:
   build:
@@ -28,11 +24,12 @@ jobs:
           gradle-version: '8.13'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 36
-        run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
 
       - name: Extract PLAY MAX Source
         run: |
