@@ -1,8 +1,11 @@
  
-name: PLAY MAX APK Build
+name: PLAY MAX User App APK Build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -23,30 +26,16 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Accept Android Licenses
+      - name: Extract User App Source
         run: |
-          yes | sdkmanager --licenses || true
+          unzip -oq PLAY_MAX_USER_APP_ONLY_DOWNLOAD_LOADING_LOGO.zip -d .
 
-      - name: Install Android SDK Packages
+      - name: Build User APK
         run: |
-          sdkmanager --install "platform-tools"
-          sdkmanager --install "platforms;android-36"
-          sdkmanager --install "build-tools;36.0.0"
+          gradle --no-daemon -p PLAY_MAX_Android_Source :app:assembleDebug
 
-      - name: Extract PLAY MAX Source
-        run: |
-          unzip -q PLAY_MAX_USER_APP_POSTER_LOADING_LAYOUT_FIXED_SOURCE.zip -d extracted
-
-      - name: Build APK
-        run: |
-          gradle -p extracted/PLAY_MAX_Android_Source :app:assembleDebug --no-daemon
-
-      - name: Upload APK
+      - name: Upload User APK
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-APK
-          path: extracted/PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          name: PLAY-MAX-USER-APK
+          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk
