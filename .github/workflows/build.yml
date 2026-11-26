@@ -1,10 +1,14 @@
-name: PLAY MAX User App Final Build
+ 
+name: PLAY MAX User App Build
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -27,15 +31,27 @@ jobs:
 
       - name: Extract User App ZIP
         run: |
-          unzip -oq PLAY_MAX_USER_APP_TRAFFIC_YEAR_DISPLAY_FIXED.zip -d .
-      - name: Build PLAY MAX APKs (ABI split)
+          unzip -oq PLAY_MAX_USER_APP_SHARE_LATEST_APK_FIXED.zip -d .
+
+      - name: Build User APK
         run: |
           gradle --no-daemon -p PLAY_MAX_Android_Source :app:assembleDebug
 
-      - name: Upload architecture-specific APKs
+      - name: Prepare APK
+        run: |
+          mkdir -p release
+          cp PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk release/PLAY-MAX-USER.apk
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PLAY-MAX-USER-APKS
-          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
- 
+          name: PLAY-MAX-USER-APK
+          path: release/PLAY-MAX-USER.apk
+
+      - name: Publish Latest GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: user-v${{ github.run_number }}
+          name: PLAY MAX User App v${{ github.run_number }}
+          files: release/PLAY-MAX-USER.apk
+          make_latest: true
