@@ -27,8 +27,7 @@ jobs:
 
       - name: Extract User App ZIP
         run: |
-          unzip -oq PLAY_MAX_USER_APP_TRAFFIC_TRACKING_FIREBASE.zip -d .
-
+          unzip -oq PLAY_MAX_USER_APP_TRAFFIC_YEAR_DISPLAY_FIXED.zip -d .
       - name: Build PLAY MAX APKs (ABI split)
         run: |
           gradle --no-daemon -p PLAY_MAX_Android_Source :app:assembleDebug
