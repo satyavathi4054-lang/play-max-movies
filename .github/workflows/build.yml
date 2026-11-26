@@ -27,7 +27,7 @@ jobs:
 
       - name: Extract User App ZIP
         run: |
-          unzip -oq PLAY_MAX_USER_APP_POSTER_LABEL_LOADING_LOGO_FIXED.zip -d .
+          unzip -oq PLAY_MAX_USER_APP_TRAFFIC_TRACKING_FIREBASE.zip -d .
 
       - name: Build PLAY MAX APKs (ABI split)
         run: |
