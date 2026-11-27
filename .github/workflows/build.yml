@@ -1,14 +1,11 @@
- 
-name: PLAY MAX User App Build
+
+name: PLAY MAX User App Final Build
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -29,29 +26,18 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Extract User App ZIP
+      - name: Extract Final PLAY MAX ZIP
         run: |
-          unzip -oq PLAY_MAX_USER_APP_SHARE_LATEST_APK_FIXED.zip -d .
+          unzip -oq PLAY_MAX_USER_APP_FINAL_COMBINED_UPDATES.zip -d .
 
-      - name: Build User APK
+      - name: Build PLAY MAX APK
         run: |
           gradle --no-daemon -p PLAY_MAX_Android_Source :app:assembleDebug
 
-      - name: Prepare APK
-        run: |
-          mkdir -p release
-          cp PLAY_MAX_Android_Source/app/build/outputs/apk/debug/app-debug.apk release/PLAY-MAX-USER.apk
-
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PLAY-MAX-USER-APK
-          path: release/PLAY-MAX-USER.apk
-
-      - name: Publish Latest GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: user-v${{ github.run_number }}
-          name: PLAY MAX User App v${{ github.run_number }}
-          files: release/PLAY-MAX-USER.apk
-          make_latest: true
+          path: PLAY_MAX_Android_Source/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+ 
